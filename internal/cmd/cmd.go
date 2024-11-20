@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"jd-matcher/internal/service"
 
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/os/gcmd"
@@ -14,8 +15,13 @@ var (
 		Brief: "start http server",
 		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
 			s := g.Server()
+			registerComponents(ctx)
 			s.Run()
 			return nil
 		},
 	}
 )
+
+func registerComponents(ctx context.Context) {
+	service.InitTelegramBot(ctx)
+}
