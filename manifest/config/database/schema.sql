@@ -8,6 +8,8 @@ CREATE TABLE job_detail (
     PRIMARY KEY (id)
 );
 
+ALTER TABLE job_detail ADD CONSTRAINT unique_link UNIQUE (link);
+
 CREATE TABLE user_info (
     id varchar(64) NOT NULL,
     name varchar(64),

@@ -23,7 +23,7 @@ var remote_ok_locations = map[string]string{
 	"Worldwide": "Worldwide",
 }
 
-func GetRemoteOkJobs(ctx context.Context, jobTypes, locations []string, offset int) ([]string, error) {
+func GetRemoteOkJobs(ctx context.Context, jobTypes, locations []string, offset int) ([]CommonJob, error) {
 
 	var validJobTypes []string
 	for _, jobType := range jobTypes {
@@ -48,7 +48,9 @@ func GetRemoteOkJobs(ctx context.Context, jobTypes, locations []string, offset i
 		return nil, err
 	}
 
-	return strings.Split(resp, "\n"), nil
+	jobs := parseRemoteOkMainPageJobs(ctx, resp)
+
+	return jobs, nil
 }
 
 func parseRemoteOkMainPageJobs(ctx context.Context, htmlStr string) (jobs []CommonJob) {

@@ -5,7 +5,9 @@
 package dao
 
 import (
+	"context"
 	"jd-matcher/internal/dao/internal"
+	"jd-matcher/internal/model/entity"
 )
 
 // internalJobDetailDao is internal type for wrapping internal DAO implements.
@@ -25,3 +27,12 @@ var (
 )
 
 // Fill with you ideas below.
+func CreateJobDetail(ctx context.Context, jobDetails []entity.JobDetail) error {
+	_, err := JobDetail.Ctx(ctx).Data(jobDetails).Save()
+	return err
+}
+
+func GetJobDetailById(ctx context.Context, id string) (result entity.JobDetail, err error) {
+	err = JobDetail.Ctx(ctx).Where("id = ?", id).Scan(&result)
+	return result, err
+}

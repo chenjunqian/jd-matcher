@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"jd-matcher/internal/service/jobs"
 	"jd-matcher/internal/service/telegram"
 
 	"github.com/gogf/gf/v2/frame/g"
@@ -24,4 +25,5 @@ var (
 
 func registerComponents(ctx context.Context) {
 	telegram.InitTelegramBot(ctx)
+	jobs.StartRemoteOkMainPageJob(ctx)
 }

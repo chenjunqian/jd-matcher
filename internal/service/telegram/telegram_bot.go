@@ -18,12 +18,13 @@ func InitTelegramBot(ctx context.Context) {
 		bot.WithDefaultHandler(defaultHandler),
 	}
 
-	telegramBot, err := bot.New(botToken, opts...)
+	var err error
+	telegramBot, err = bot.New(botToken, opts...)
 	if err != nil {
 		panic(err)
 	}
 
-	telegramBot.Start(ctx)
+	go telegramBot.Start(ctx)
 
 }
 
