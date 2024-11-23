@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"jd-matcher/internal/service"
+	"jd-matcher/internal/service/telegram"
 
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/os/gcmd"
@@ -23,5 +23,5 @@ var (
 )
 
 func registerComponents(ctx context.Context) {
-	service.InitTelegramBot(ctx)
+	telegram.InitTelegramBot(ctx)
 }
