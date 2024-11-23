@@ -13,7 +13,7 @@ import (
 
 func StartRemoteOkMainPageJob(ctx context.Context) {
 
-	_, err := gcron.Add(ctx, "0 0 */12 * * *", func(ctx context.Context) {
+	_, err := gcron.Add(ctx, "0 */6 * * * *", func(ctx context.Context) {
 		jobs, err := crawler.GetRemoteOkJobs(ctx, []string{"dev", "engineer"}, []string{"Worldwide"}, 0)
 		if err != nil {
 			g.Log().Line().Error(ctx, "get remote ok job error", err)
@@ -36,7 +36,7 @@ func StartRemoteOkMainPageJob(ctx context.Context) {
 			g.Log().Line().Error(ctx, "add remote ok main page job error", err)
 			return
 		}
-	})
+	}, "remoteok_main_page_job")
 	if err != nil {
 		g.Log().Line().Error(ctx, "add remote ok main page job error", err)
 	} else {

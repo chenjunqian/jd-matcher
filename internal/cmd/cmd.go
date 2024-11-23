@@ -25,5 +25,5 @@ var (
 
 func registerComponents(ctx context.Context) {
 	telegram.InitTelegramBot(ctx)
-	jobs.StartRemoteOkMainPageJob(ctx)
+	jobs.Register(ctx)
 }
