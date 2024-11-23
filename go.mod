@@ -6,6 +6,7 @@ require github.com/gogf/gf/v2 v2.7.1
 
 require (
 	github.com/BurntSushi/toml v1.3.2 // indirect
+	github.com/anaskhan96/soup v1.2.5 // indirect
 	github.com/clbanning/mxj/v2 v2.7.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
