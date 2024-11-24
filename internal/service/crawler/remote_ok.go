@@ -61,6 +61,7 @@ func parseRemoteOkMainPageJobs(ctx context.Context, htmlStr string) (jobs []Comm
 	}(ctx)
 
 	// if htmlStr start with <tr, then surround it with <table></table>
+	htmlStr = gstr.Trim(htmlStr)
 	if strings.HasPrefix(htmlStr, "<tr") {
 		htmlStr = "<table>" + htmlStr + "</table>"
 	}
@@ -79,22 +80,31 @@ func parseRemoteOkMainPageJobs(ctx context.Context, htmlStr string) (jobs []Comm
 			jobUrl         string
 			jobDescription string
 		)
-		jobTitle = jobExpend.Find("h1").Text()
 		if jobExpend.Find("input", "class", "share-job-copy-paste").Pointer == nil {
 			continue
 		}
 		jobDescription = jobExpend.Find("div", "class", "html").FullText()
 
 		job := CommonJob{
-			Title:       gstr.Trim(jobTitle),
 			Description: gstr.Trim(jobDescription),
 		}
 
 		dataId := jobExpend.Attrs()["data-id"]
 		if dataId != "" {
+			// get job url
 			jobHeader := docs.Find("tr", "class", "job-"+dataId)
 			jobUrl = jobHeader.Attrs()["data-url"]
 			job.Url = REMOTE_OK_BASE_URL + jobUrl
+
+			// get job title
+			companyPosistionTrDoc := jobHeader.Find("td", "class", "company_and_position")
+			if companyPosistionTrDoc.Pointer == nil {
+				continue
+			}
+			jobTitle = companyPosistionTrDoc.Find("h2").FullText()
+			job.Title = gstr.Trim(jobTitle)
+
+			// get job tags
 			if jobHeader.Pointer != nil {
 				jobTags := jobHeader.Find("td", "class", "tags")
 				jobTagsH3 := jobTags.FindAll("h3")

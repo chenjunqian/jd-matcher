@@ -6,8 +6,11 @@ package dao
 
 import (
 	"context"
+	"errors"
 	"jd-matcher/internal/dao/internal"
 	"jd-matcher/internal/model/entity"
+
+	"github.com/gogf/gf/v2/frame/g"
 )
 
 // internalJobDetailDao is internal type for wrapping internal DAO implements.
@@ -27,9 +30,26 @@ var (
 )
 
 // Fill with you ideas below.
-func CreateJobDetail(ctx context.Context, jobDetails []entity.JobDetail) error {
-	_, err := JobDetail.Ctx(ctx).Data(jobDetails).Save()
-	return err
+func CreateJobDetailIfNotExist(ctx context.Context, jobDetails []entity.JobDetail) error {
+	var allError []error
+	for _, jobDetail := range jobDetails {
+		var existEntity entity.JobDetail
+		var err error
+		JobDetail.Ctx(ctx).Where("link = ?", jobDetail.Link).Scan(&existEntity)
+		if existEntity.Id != "" {
+			g.Log().Line().Debugf(ctx, "job link %s exist, skip it", jobDetail.Link)
+			continue
+		}
+		if jobDetail.JobTags == nil {
+			jobDetail.JobTags = []string{}
+		}
+		_, err = JobDetail.Ctx(ctx).Insert(jobDetail)
+		if err != nil {
+			allError = append(allError, err)
+		}
+	}
+
+	return errors.Join(allError...)
 }
 
 func GetJobDetailById(ctx context.Context, id string) (result entity.JobDetail, err error) {
