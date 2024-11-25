@@ -14,6 +14,7 @@ import (
 func StartRemoteOkMainPageJob(ctx context.Context) {
 
 	_, err := gcron.Add(ctx, "@every 3h", func(ctx context.Context) {
+		g.Log().Line().Info(ctx, "start remote ok main page job")
 		jobs, err := crawler.GetRemoteOkJobs(ctx, []string{"Developer", "Engineer"}, []string{"Worldwide"}, 0)
 		if err != nil {
 			g.Log().Line().Error(ctx, "get remote ok job error :", err)

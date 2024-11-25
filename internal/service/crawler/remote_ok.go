@@ -71,8 +71,6 @@ func parseRemoteOkMainPageJobs(ctx context.Context, htmlStr string) (jobs []Comm
 		panic(docs.Error)
 	}
 	jobExpends := docs.FindAll("tr", "class", "expand")
-	allTr := docs.FindAll("tr")
-	fmt.Println(len(allTr))
 
 	for _, jobExpend := range jobExpends {
 		var (
