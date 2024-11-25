@@ -1,0 +1,18 @@
+server:
+    address: ":8199"
+
+logger:
+  path: "logs"
+  file: "{Y-m-d}.log"
+  prefix: ""
+  level: "all"
+  timeFormat: "2006-01-02T15:04:05"
+
+database:
+  default:
+    link: "pgsql:jdmatcher:1qaz!QAZ@tcp(127.0.0.1:5432)/jdmatcherdb"
+    debug: false
+
+telegram:
+  bot:
+    token: ""
