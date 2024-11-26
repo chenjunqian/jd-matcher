@@ -4,10 +4,13 @@ CREATE TABLE job_detail (
     job_desc text,
     job_tags text [],
     link varchar(128),
-    source varchar(64),
+    "source" varchar(64),
+    location varchar(255),
+    salary varchar(255),
     PRIMARY KEY (id)
 );
 
+CREATE INDEX pgroonga_idx_job_desc ON job_detail USING pgroonga ("job_desc");
 ALTER TABLE job_detail ADD CONSTRAINT unique_link UNIQUE (link);
 
 CREATE TABLE user_info (

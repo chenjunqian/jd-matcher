@@ -14,35 +14,9 @@ import (
 
 const REMOTE_OK_BASE_URL = "https://remoteok.com"
 
-var REMOTE_OK_JOB_TYPES = map[string]string{
-	"Engineer":  "engineer",
-	"Developer": "dev",
-}
-
-var remote_ok_locations = map[string]string{
-	"Worldwide": "Worldwide",
-}
-
 func GetRemoteOkJobs(ctx context.Context, jobTypes, locations []string, offset int) ([]CommonJob, error) {
 
-	var validJobTypes []string
-	for _, jobType := range jobTypes {
-		if val, ok := REMOTE_OK_JOB_TYPES[jobType]; ok {
-			validJobTypes = append(validJobTypes, val)
-		}
-	}
-	var jobTypeStr = strings.Join(validJobTypes, ",")
-
-	var validLocations []string
-	for _, location := range locations {
-		if val, ok := remote_ok_locations[location]; ok {
-			validLocations = append(validLocations, val)
-		}
-	}
-	var locationStr = strings.Join(validLocations, ",")
-
-	// https://remoteok.com/?tags=dev,engineer&location=Worldwide&action=get_jobs&offset=20
-	var reqUrl = REMOTE_OK_BASE_URL + "/?tags=" + jobTypeStr + "&" + "location=" + locationStr + "&" + "action=get_jobs&offset=" + gconv.String(offset)
+	var reqUrl = REMOTE_OK_BASE_URL + "/?action=get_jobs&offset=" + gconv.String(offset)
 	resp, err := utility.GetContent(ctx, reqUrl)
 	if err != nil {
 		return nil, err
@@ -81,7 +55,11 @@ func parseRemoteOkMainPageJobs(ctx context.Context, htmlStr string) (jobs []Comm
 		if jobExpend.Find("input", "class", "share-job-copy-paste").Pointer == nil {
 			continue
 		}
-		jobDescription = jobExpend.Find("div", "class", "html").FullText()
+		if jobExpend.Find("div", "class", "html").Pointer != nil {
+			jobDescription = jobExpend.Find("div", "class", "html").FullText()
+		} else if jobExpend.Find("div", "class", "markdown").Pointer != nil {
+			jobDescription = jobExpend.Find("div", "class", "markdown").FullText()
+		}
 
 		job := CommonJob{
 			Description: gstr.Trim(jobDescription),
@@ -101,6 +79,21 @@ func parseRemoteOkMainPageJobs(ctx context.Context, htmlStr string) (jobs []Comm
 			}
 			jobTitle = companyPosistionTrDoc.Find("h2").FullText()
 			job.Title = gstr.Trim(jobTitle)
+
+			// get job location and salary
+			jobLocationSalaryDivDocs := jobHeader.FindAll("div", "class", "location")
+			locationList := []string{}
+			for i := 0; i < len(jobLocationSalaryDivDocs); i++ {
+				if i == len(jobLocationSalaryDivDocs)-1 {
+					job.Salary = gstr.Trim(jobLocationSalaryDivDocs[i].Text())
+				} else {
+					locationList = append(locationList, gstr.Trim(jobLocationSalaryDivDocs[i].Text()))
+				}
+			}
+
+			if len(locationList) > 0 {
+				job.Location = strings.Join(locationList, ",")
+			}
 
 			// get job tags
 			if jobHeader.Pointer != nil {

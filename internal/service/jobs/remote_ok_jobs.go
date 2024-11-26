@@ -8,21 +8,17 @@ import (
 
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/os/gcron"
+	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/gogf/gf/v2/util/guid"
 )
 
 func StartRemoteOkMainPageJob(ctx context.Context) {
 
 	_, err := gcron.Add(ctx, "@every 3h", func(ctx context.Context) {
-		g.Log().Line().Info(ctx, "start remote ok main page job")
-		jobs, err := crawler.GetRemoteOkJobs(ctx, []string{"Developer", "Engineer"}, []string{"Worldwide"}, 0)
-		if err != nil {
-			g.Log().Line().Error(ctx, "get remote ok job error :", err)
-			return
-		}
-
-		_ = storeRemoteOkJobs(ctx, jobs)
-
+		startTime := gtime.Now()
+		runRemoteOkMainPageJob(ctx)
+		finishTime := gtime.Now()
+		g.Log().Line().Infof(ctx, "remote ok main page job cost %s", finishTime.Sub(startTime).String())
 	}, "remoteok_main_page_job")
 
 	if err != nil {
@@ -32,16 +28,30 @@ func StartRemoteOkMainPageJob(ctx context.Context) {
 	}
 }
 
+func runRemoteOkMainPageJob(ctx context.Context) {
+	g.Log().Line().Info(ctx, "start remote ok main page job")
+	jobs, err := crawler.GetRemoteOkJobs(ctx, []string{}, []string{"Worldwide"}, 1)
+	if err != nil {
+		g.Log().Line().Error(ctx, "get remote ok job error :", err)
+		return
+	}
+
+	_ = storeRemoteOkJobs(ctx, jobs)
+
+}
+
 func storeRemoteOkJobs(ctx context.Context, jobs []crawler.CommonJob) (err error) {
 	var jobEntities []entity.JobDetail
 	for _, job := range jobs {
 		jobEntities = append(jobEntities, entity.JobDetail{
-			Id:      guid.S(),
-			Title:   job.Title,
-			JobDesc: job.Description,
-			JobTags: job.Tags,
-			Link:    job.Url,
-			Source:  "remoteok",
+			Id:       guid.S(),
+			Title:    job.Title,
+			JobDesc:  job.Description,
+			JobTags:  job.Tags,
+			Link:     job.Url,
+			Source:   "remoteok",
+			Location: job.Location,
+			Salary:   job.Salary,
 		})
 	}
 	err = dao.CreateJobDetailIfNotExist(ctx, jobEntities)
