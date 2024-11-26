@@ -90,6 +90,12 @@ func parseRemoteOkMainPageJobs(ctx context.Context, htmlStr string) (jobs []Comm
 					locationList = append(locationList, gstr.Trim(jobLocationSalaryDivDocs[i].Text()))
 				}
 			}
+			
+			// get job datetime
+			jobDatetimeDiv := jobHeader.Find("time")
+			if jobDatetimeDiv.Pointer != nil {
+				job.UpdateTime = jobDatetimeDiv.Attrs()["datetime"]
+			}
 
 			if len(locationList) > 0 {
 				job.Location = strings.Join(locationList, ",")

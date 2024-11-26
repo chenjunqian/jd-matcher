@@ -43,6 +43,7 @@ func CreateJobDetailIfNotExist(ctx context.Context, jobDetails []entity.JobDetai
 		if jobDetail.JobTags == nil {
 			jobDetail.JobTags = []string{}
 		}
+
 		_, err = JobDetail.Ctx(ctx).Insert(jobDetail)
 		if err != nil {
 			allError = append(allError, err)
@@ -55,4 +56,11 @@ func CreateJobDetailIfNotExist(ctx context.Context, jobDetails []entity.JobDetai
 func GetJobDetailById(ctx context.Context, id string) (result entity.JobDetail, err error) {
 	err = JobDetail.Ctx(ctx).Where("id = ?", id).Scan(&result)
 	return result, err
+}
+
+func GetLatestJobList(ctx context.Context, offset, limit int) (entities []entity.JobDetail, err error) {
+
+	err = JobDetail.Ctx(ctx).Order("update_time desc").Limit(limit).Offset(offset).Scan(&entities)
+	
+	return
 }

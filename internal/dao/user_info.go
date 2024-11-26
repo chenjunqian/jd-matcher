@@ -5,7 +5,12 @@
 package dao
 
 import (
+	"context"
 	"jd-matcher/internal/dao/internal"
+	"jd-matcher/internal/model/entity"
+
+	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/util/guid"
 )
 
 // internalUserInfoDao is internal type for wrapping internal DAO implements.
@@ -25,3 +30,23 @@ var (
 )
 
 // Fill with you ideas below.
+func CreateUserInfoIfNotExist(ctx context.Context, userInfo entity.UserInfo) (err error) {
+	var existUserInfo entity.UserInfo
+	err = UserInfo.Ctx(ctx).Where("telegram_id = ?", userInfo.TelegramId).Scan(&existUserInfo)
+
+	if existUserInfo.Id != "" {
+		g.Log().Line().Debugf(ctx, "user %s exist, update user info", userInfo.Name)
+		_, err = UserInfo.Ctx(ctx).Save(userInfo)
+		return nil
+	}
+
+	userInfo.Id = guid.S()
+	_, err = UserInfo.Ctx(ctx).Insert(userInfo)
+
+	return
+}
+
+func GetUserInfoByTelegramId(ctx context.Context, telegramId string) (result entity.UserInfo, err error) {
+	err = UserInfo.Ctx(ctx).Where("telegram_id = ?", telegramId).Scan(&result)
+	return
+}
