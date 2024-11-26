@@ -5,4 +5,6 @@ type CommonJob struct {
 	Url         string
 	Description string
 	Tags        []string
+	Location    string
+	Salary      string
 }
