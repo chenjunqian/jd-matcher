@@ -7,4 +7,5 @@ type CommonJob struct {
 	Tags        []string
 	Location    string
 	Salary      string
+	UpdateTime  string
 }

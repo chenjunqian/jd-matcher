@@ -20,26 +20,28 @@ type JobDetailDao struct {
 
 // JobDetailColumns defines and stores column names for table job_detail.
 type JobDetailColumns struct {
-	Id       string //
-	Title    string //
-	JobDesc  string //
-	JobTags  string //
-	Link     string //
-	Source   string //
-	Location string //
-	Salary   string //
+	Id         string //
+	Title      string //
+	JobDesc    string //
+	JobTags    string //
+	Link       string //
+	Source     string //
+	Location   string //
+	Salary     string //
+	UpdateTime string //
 }
 
 // jobDetailColumns holds the columns for table job_detail.
 var jobDetailColumns = JobDetailColumns{
-	Id:       "id",
-	Title:    "title",
-	JobDesc:  "job_desc",
-	JobTags:  "job_tags",
-	Link:     "link",
-	Source:   "source",
-	Location: "location",
-	Salary:   "salary",
+	Id:         "id",
+	Title:      "title",
+	JobDesc:    "job_desc",
+	JobTags:    "job_tags",
+	Link:       "link",
+	Source:     "source",
+	Location:   "location",
+	Salary:     "salary",
+	UpdateTime: "update_time",
 }
 
 // NewJobDetailDao creates and returns a new DAO object for table data access.

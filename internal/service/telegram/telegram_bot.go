@@ -16,6 +16,7 @@ func InitTelegramBot(ctx context.Context) {
 	botToken := g.Cfg().MustGetWithEnv(ctx, "telegram.bot.token").String()
 	opts := []bot.Option{
 		bot.WithDefaultHandler(defaultHandler),
+		bot.WithCallbackQueryDataHandler(MATCHED_JOBS_CALLBACK_DATA_PREFIX, bot.MatchTypePrefix, matchedJobsCallbackHandler),
 	}
 
 	var err error
@@ -24,16 +25,27 @@ func InitTelegramBot(ctx context.Context) {
 		panic(err)
 	}
 
+	myCommandParams := bot.SetMyCommandsParams{
+		Commands:     getAllCommands(),
+		LanguageCode: "en",
+	}
+	telegramBot.SetMyCommands(ctx, &myCommandParams)
+
 	go telegramBot.Start(ctx)
 
 }
 
 func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	g.Log().Line().Debugf(ctx, "message: %v", gconv.String(update.Message))
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "Hello, world!",
-	})
+	g.Log().Line().Debugf(ctx, "update: %v", gconv.String(update))
+	var messageType models.MessageEntityType
+	if update.Message != nil && update.Message.Entities != nil && len(update.Message.Entities) > 0 {
+		messageType = update.Message.Entities[0].Type
+	}
+
+	if messageType == models.MessageEntityTypeBotCommand {
+		handleCommandReply(ctx, b, update, update.Message.Text)
+	}
+
 }
 
 func GetTelegramBot() *bot.Bot {

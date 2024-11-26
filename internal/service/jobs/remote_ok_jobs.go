@@ -43,6 +43,12 @@ func runRemoteOkMainPageJob(ctx context.Context) {
 func storeRemoteOkJobs(ctx context.Context, jobs []crawler.CommonJob) (err error) {
 	var jobEntities []entity.JobDetail
 	for _, job := range jobs {
+		updateTime, err := gtime.StrToTime(job.UpdateTime)
+		if err != nil {
+			g.Log().Line().Error(ctx, "parse remote ok job update time error : ", err)
+			updateTime = gtime.Now()
+		}
+		g.Log().Line().Debugf(ctx, "the update time is %v", updateTime.String())
 		jobEntities = append(jobEntities, entity.JobDetail{
 			Id:       guid.S(),
 			Title:    job.Title,
@@ -52,6 +58,7 @@ func storeRemoteOkJobs(ctx context.Context, jobs []crawler.CommonJob) (err error
 			Source:   "remoteok",
 			Location: job.Location,
 			Salary:   job.Salary,
+			UpdateTime: updateTime,
 		})
 	}
 	err = dao.CreateJobDetailIfNotExist(ctx, jobEntities)
