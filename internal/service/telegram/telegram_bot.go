@@ -38,6 +38,7 @@ func InitTelegramBot(ctx context.Context) {
 
 	g.Log().Line().Info(ctx, "Closing telegram bot before launching")
 	closeTelegramBot(ctx, telegramBot)
+	g.Log().Line().Info(ctx, "Launch telegram bot")
 	go telegramBot.Start(ctx)
 
 }
