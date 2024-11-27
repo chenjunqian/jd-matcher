@@ -20,11 +20,6 @@ func StartEmbeddingJobDetailJob(ctx context.Context) {
 		g.Log().Line().Infof(ctx, "embedding job detail job cost %s", finishTime.Sub(startTime).String())
 	}, "embedding_job_detail_job")
 
-	startTime := gtime.Now()
-	runEmbeddingJobDetailJob(ctx)
-	finishTime := gtime.Now()
-	g.Log().Line().Infof(ctx, "embedding job detail job cost %s", finishTime.Sub(startTime).String())
-
 	if err != nil {
 		g.Log().Line().Error(ctx, "add embedding job detail job error :", err)
 	} else {
