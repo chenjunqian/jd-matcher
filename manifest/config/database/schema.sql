@@ -23,6 +23,7 @@ CREATE TABLE user_info (
     email varchar(64),
     telegram_id varchar(64),
     resume_embedding vector,
+    resume text,
     PRIMARY KEY (id)
 );
 
