@@ -16,3 +16,9 @@ database:
 telegram:
   bot:
     token: ""
+
+openai:
+  baseUrl: 
+  apiKey: 
+  model: gpt-4o-mini
+  embeddingModel: text-embedding-ada-002
