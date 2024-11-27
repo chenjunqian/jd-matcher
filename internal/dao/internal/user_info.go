@@ -20,18 +20,20 @@ type UserInfoDao struct {
 
 // UserInfoColumns defines and stores column names for table user_info.
 type UserInfoColumns struct {
-	Id         string //
-	Name       string //
-	Email      string //
-	TelegramId string //
+	Id              string //
+	Name            string //
+	Email           string //
+	TelegramId      string //
+	ResumeEmbedding string //
 }
 
 // userInfoColumns holds the columns for table user_info.
 var userInfoColumns = UserInfoColumns{
-	Id:         "id",
-	Name:       "name",
-	Email:      "email",
-	TelegramId: "telegram_id",
+	Id:              "id",
+	Name:            "name",
+	Email:           "email",
+	TelegramId:      "telegram_id",
+	ResumeEmbedding: "resume_embedding",
 }
 
 // NewUserInfoDao creates and returns a new DAO object for table data access.
