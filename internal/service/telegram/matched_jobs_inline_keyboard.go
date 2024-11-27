@@ -52,6 +52,10 @@ func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, updat
 		replyMessage = replyMessage + fmt.Sprintf("Title : %s\nLink : %s\nLocation : %s\nSalary : %s\nDate : %s\n\n", job.Title, job.Link, job.Location, job.Salary, job.UpdateTime.Format("Y-m-d"))
 	}
 
+	if replyMessage == "" {
+		replyMessage = "No matched job found, please try again later."
+	}
+
 	matchJobTotalCount, err := dao.GetUserMatchedJobDetailListTotalCount(ctx, userId)
 	if err != nil {
 		g.Log().Line().Error(ctx, "get matched job total count error : ", err)
