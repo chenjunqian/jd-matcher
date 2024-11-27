@@ -49,7 +49,7 @@ func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, updat
 	}
 
 	for _, job := range matchJobList {
-		replyMessage = replyMessage + fmt.Sprintf("Title : %s\nLink : %s\nDate : %s\n\n", job.Title, job.Link, job.UpdateTime.Format("Y-m-d"))
+		replyMessage = replyMessage + fmt.Sprintf("Title : %s\nLink : %s\nLocation : %s\nSalary : %s\nDate : %s\n\n", job.Title, job.Link, job.Location, job.Salary, job.UpdateTime.Format("Y-m-d"))
 	}
 
 	matchJobTotalCount, err := dao.GetUserMatchedJobDetailListTotalCount(ctx, userId)
@@ -66,7 +66,7 @@ func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, updat
 	replyMarkup = &models.InlineKeyboardMarkup{
 		InlineKeyboard: [][]models.InlineKeyboardButton{
 			{
-				{Text: "Current Page " + gconv.String(currentPage + 1), CallbackData: MATCHED_JOBS_CURRENT_PAGE_DATA + gconv.String(currentPage)},
+				{Text: "Current Page " + gconv.String(currentPage+1), CallbackData: MATCHED_JOBS_CURRENT_PAGE_DATA + gconv.String(currentPage)},
 			},
 			{
 				{Text: "Total Page " + gconv.String(totalPage), CallbackData: MATCHED_JOBS_TOTAL_PAGE_DATA + gconv.String(totalPage)},
