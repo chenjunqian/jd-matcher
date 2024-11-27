@@ -5,7 +5,13 @@
 package dao
 
 import (
+	"context"
+	"errors"
 	"jd-matcher/internal/dao/internal"
+	"jd-matcher/internal/model/entity"
+
+	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/os/gtime"
 )
 
 // internalUserMatchedJobDao is internal type for wrapping internal DAO implements.
@@ -25,3 +31,53 @@ var (
 )
 
 // Fill with you ideas below.
+func CreateMatchJobIfNotExist(ctx context.Context, matchedJobs []entity.UserMatchedJob) (err error) {
+
+	var allError []error
+	for _, matchJob := range matchedJobs {
+		var existEntity entity.UserMatchedJob
+		var err error
+		err = UserMatchedJob.Ctx(ctx).Where("user_id = ? and job_id = ?", matchJob.UserId, matchJob.JobId).Scan(&existEntity)
+		if err != nil {
+			allError = append(allError, err)
+		}
+		if existEntity.JobId != "" {
+			g.Log().Line().Debugf(ctx, "match job %s exist for user %s, skip it", matchJob.JobId, matchJob.UserId)
+			continue
+		}
+
+		matchJob.UpdateTime = gtime.Now()
+		_, err = UserMatchedJob.Ctx(ctx).Insert(matchJob)
+		if err != nil {
+			allError = append(allError, err)
+		}
+	}
+
+	err = errors.Join(allError...)
+	return
+}
+
+func GetUserMatchedJobDetailList(ctx context.Context, userId string, offset, limit int) (entities []entity.JobDetail, err error) {
+
+	g.Model("user_matched_job umj").
+		LeftJoin("job_detail jd", "umj.job_id = jd.id").
+		Fields("jd.*").
+		Where("umj.user_id = ?", userId).
+		Order("umj.update_time desc").
+		Limit(limit).
+		Offset(offset).
+		Scan(&entities)
+
+	return
+}
+
+func GetUserMatchedJobDetailListTotalCount(ctx context.Context, userId string) (count int, err error) {
+
+	count, err = g.Model("user_matched_job umj").
+		LeftJoin("job_detail jd", "umj.job_id = jd.id").
+		Fields("jd.*").
+		Where("umj.user_id = ?", userId).
+		Count()
+	return
+	
+}

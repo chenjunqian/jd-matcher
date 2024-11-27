@@ -31,8 +31,25 @@ func InitTelegramBot(ctx context.Context) {
 	}
 	telegramBot.SetMyCommands(ctx, &myCommandParams)
 
+	go func() {
+		<-ctx.Done()
+		closeTelegramBot(ctx, telegramBot)
+	}()
+
+	g.Log().Line().Info(ctx, "Closing telegram bot before launching")
+	closeTelegramBot(ctx, telegramBot)
+	g.Log().Line().Info(ctx, "Launch telegram bot")
 	go telegramBot.Start(ctx)
 
+}
+
+func closeTelegramBot(ctx context.Context, b *bot.Bot) {
+	closed, err := b.Close(ctx)
+	if err != nil || !closed {
+		g.Log().Line().Error(ctx, "Close telegram bot error : ", err)
+	} else {
+		g.Log().Line().Info(ctx, "Close telegram bot success")
+	}
 }
 
 func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -44,6 +61,8 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	if messageType == models.MessageEntityTypeBotCommand {
 		handleCommandReply(ctx, b, update, update.Message.Text)
+	} else if update.Message != nil && update.Message.Document != nil {
+		handleResumeFileUpload(ctx, b, update)
 	}
 
 }
