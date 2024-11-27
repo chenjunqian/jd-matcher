@@ -31,8 +31,24 @@ func InitTelegramBot(ctx context.Context) {
 	}
 	telegramBot.SetMyCommands(ctx, &myCommandParams)
 
+	go func() {
+		<-ctx.Done()
+		closeTelegramBot(ctx, telegramBot)
+	}()
+
+	closeTelegramBot(ctx, telegramBot)
 	go telegramBot.Start(ctx)
 
+}
+
+func closeTelegramBot(ctx context.Context, b *bot.Bot) {
+	g.Log().Line().Info(ctx, "Closing telegram bot before launching")
+	closed, err := b.Close(ctx)
+	if err != nil || !closed {
+		g.Log().Line().Error(ctx, "Close telegram bot error : ", err)
+	} else {
+		g.Log().Line().Info(ctx, "Close telegram bot success")
+	}
 }
 
 func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
