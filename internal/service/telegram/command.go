@@ -89,7 +89,22 @@ func handleStartCommand(ctx context.Context, b *bot.Bot, update *models.Update) 
 }
 
 func handleJobsCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
-	replyMarkup, replyMessage, err := buildMatchedJobListInlineKeyboard(ctx, update)
+	userInfo, err := dao.GetUserInfoByTelegramId(ctx, gconv.String(update.Message.From.ID))
+	if err != nil {
+		g.Log().Line().Error(ctx, "get user info error : ", err)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "There is something wrong with my service. Please try again later.",
+		})
+		return
+	} else if userInfo.Id == "" {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Please use /start command to login again.",
+		})
+		return
+	}
+	replyMarkup, replyMessage, err := buildMatchedJobListInlineKeyboard(ctx, userInfo.Id, update)
 	if err != nil {
 		g.Log().Line().Error(ctx, "build matched job list inline keyboard error : ", err)
 		return
