@@ -61,6 +61,8 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	if messageType == models.MessageEntityTypeBotCommand {
 		handleCommandReply(ctx, b, update, update.Message.Text)
+	} else if update.Message != nil && update.Message.Document != nil {
+		handleResumeFileUpload(ctx, b, update)
 	}
 
 }

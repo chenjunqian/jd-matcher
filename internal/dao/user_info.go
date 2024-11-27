@@ -11,6 +11,7 @@ import (
 
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/util/guid"
+	"github.com/pgvector/pgvector-go"
 )
 
 // internalUserInfoDao is internal type for wrapping internal DAO implements.
@@ -48,5 +49,15 @@ func CreateUserInfoIfNotExist(ctx context.Context, userInfo entity.UserInfo) (er
 
 func GetUserInfoByTelegramId(ctx context.Context, telegramId string) (result entity.UserInfo, err error) {
 	err = UserInfo.Ctx(ctx).Where("telegram_id = ?", telegramId).Scan(&result)
+	return
+}
+
+func IsUserHasUploadResume(ctx context.Context, telegramId string) (result bool, err error) {
+	result, err = UserInfo.Ctx(ctx).Where("telegram_id = ?", telegramId).Where("resume is not null").Exist()
+	return
+}
+
+func UpdateUserResume(ctx context.Context, telegramId string, resume string, resumeEmbedding []float32) (err error) {
+	_, err = UserInfo.Ctx(ctx).Data(g.Map{"resume": resume, "resume_embedding": pgvector.NewVector(resumeEmbedding)}).Where("telegram_id = ?", telegramId).Update()
 	return
 }
