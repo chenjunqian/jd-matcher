@@ -11,6 +11,8 @@ import (
 	"jd-matcher/internal/model/entity"
 
 	"github.com/gogf/gf/v2/frame/g"
+
+	"github.com/pgvector/pgvector-go"
 )
 
 // internalJobDetailDao is internal type for wrapping internal DAO implements.
@@ -61,6 +63,25 @@ func GetJobDetailById(ctx context.Context, id string) (result entity.JobDetail, 
 func GetLatestJobList(ctx context.Context, offset, limit int) (entities []entity.JobDetail, err error) {
 
 	err = JobDetail.Ctx(ctx).Order("update_time desc").Limit(limit).Offset(offset).Scan(&entities)
-	
+
+	return
+}
+
+func GetEmptyJobDescEmbeddingJobDetailTotalCount(ctx context.Context) (count int, err error) {
+
+	count, err = JobDetail.Ctx(ctx).Where("job_desc_embedding is null").Count()
+
+	return
+}
+
+func GetEmptyJobDescEmbeddingJobList(ctx context.Context, offset, limit int) (entities []entity.JobDetail, err error) {
+
+	err = JobDetail.Ctx(ctx).Where("job_desc_embedding is null").Order("update_time desc").Limit(limit).Offset(offset).Scan(&entities)
+
+	return
+}
+
+func UpdateJobDetailEmbedding(ctx context.Context, entity entity.JobDetail) (err error) {
+	_, err = JobDetail.Ctx(ctx).Data(g.Map{"job_desc_embedding": pgvector.NewVector(entity.JobDescEmbedding)}).Where("id = ?", entity.Id).Update()
 	return
 }
