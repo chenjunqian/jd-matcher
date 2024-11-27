@@ -6,4 +6,4 @@ docker run -d \
   -p 5432:5432 \
   --net=host \
   -v $(pwd)/db-data:/var/lib/postgresql/data \
-  groonga/pgroonga:3.2.4-alpine-17
+  postgres:17.2-bookworm

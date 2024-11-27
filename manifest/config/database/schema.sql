@@ -1,3 +1,5 @@
+CREATE EXTENSION vector;
+
 CREATE TABLE job_detail (
     id varchar(64) NOT NULL,
     title varchar(128),
@@ -7,6 +9,8 @@ CREATE TABLE job_detail (
     "source" varchar(64),
     location varchar(255),
     salary varchar(255),
+    update_time date,
+    job_desc_embedding vector,
     PRIMARY KEY (id)
 );
 
@@ -18,6 +22,8 @@ CREATE TABLE user_info (
     name varchar(64),
     email varchar(64),
     telegram_id varchar(64),
+    resume_embedding vector,
+    resume text,
     PRIMARY KEY (id)
 );
 
