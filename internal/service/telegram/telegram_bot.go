@@ -36,13 +36,13 @@ func InitTelegramBot(ctx context.Context) {
 		closeTelegramBot(ctx, telegramBot)
 	}()
 
+	g.Log().Line().Info(ctx, "Closing telegram bot before launching")
 	closeTelegramBot(ctx, telegramBot)
 	go telegramBot.Start(ctx)
 
 }
 
 func closeTelegramBot(ctx context.Context, b *bot.Bot) {
-	g.Log().Line().Info(ctx, "Closing telegram bot before launching")
 	closed, err := b.Close(ctx)
 	if err != nil || !closed {
 		g.Log().Line().Error(ctx, "Close telegram bot error : ", err)
