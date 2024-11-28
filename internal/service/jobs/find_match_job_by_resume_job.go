@@ -28,7 +28,7 @@ func StartFindMatchJobByResumeJob(ctx context.Context) {
 
 func runFindMatchJobByResumeJob(ctx context.Context) {
 	g.Log().Line().Info(ctx, "start query match job by resume job")
-	totalCount, err := dao.GetUserInfoCount(ctx)
+	totalCount, err := dao.GetEmptyResumeUserInfoCount(ctx)
 	if err != nil {
 		g.Log().Line().Error(ctx, "get user info count error : ", err)
 		return
@@ -42,7 +42,7 @@ func runFindMatchJobByResumeJob(ctx context.Context) {
 	if totalCount > 100 {
 		// if total count more than 100, use batch embedding, query 100 at a time
 		for i := 0; i < totalCount; i += 100 {
-			userInfoList, err := dao.GetUserInfoList(ctx, i, 100)
+			userInfoList, err := dao.GetEmptyResumeUserInfoList(ctx, i, 100)
 			if err != nil {
 				g.Log().Line().Error(ctx, "get user info list error : ", err)
 				return
@@ -53,7 +53,7 @@ func runFindMatchJobByResumeJob(ctx context.Context) {
 			}
 		}
 	} else {
-		userInfoList, err := dao.GetUserInfoList(ctx, 0, totalCount)
+		userInfoList, err := dao.GetEmptyResumeUserInfoList(ctx, 0, totalCount)
 		if err != nil {
 			g.Log().Line().Error(ctx, "get user info list error : ", err)
 			return

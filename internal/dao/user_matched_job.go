@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"jd-matcher/internal/dao/internal"
+	"jd-matcher/internal/model/dto"
 	"jd-matcher/internal/model/entity"
 
 	"github.com/gogf/gf/v2/frame/g"
@@ -79,5 +80,27 @@ func GetUserMatchedJobDetailListTotalCount(ctx context.Context, userId string) (
 		Where("umj.user_id = ?", userId).
 		Count()
 	return
-	
+
+}
+
+func GetUserNonNotifiedJobList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error) {
+
+	g.Model("user_matched_job umj").
+		LeftJoin("job_detail jd", "umj.job_id = jd.id").
+		Fields("jd.*, umj.user_id").
+		Where("umj.notification = ? and umj.user_id = ?", false, userId).
+		Order("umj.update_time desc").
+		Limit(limit).
+		Offset(offset).
+		Scan(&entities)
+	return
+
+}
+
+func GetUserNonNotifiedJobTotalCount(ctx context.Context, userId string) (count int, err error) {
+
+	count, err = g.Model("user_matched_job umj").
+		Where("umj.notification = ? and umj.user_id = ?", false, userId).
+		Count()
+	return
 }

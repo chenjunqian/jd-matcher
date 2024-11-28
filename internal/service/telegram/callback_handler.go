@@ -48,3 +48,24 @@ func matchedJobsCallbackHandler(ctx context.Context, b *bot.Bot, update *models.
 		g.Log().Line().Error(ctx, "edit failed response message : ", gconv.String(respMsg))
 	}
 }
+
+func matchedNotifyMatchedJobCallBackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	g.Log().Line().Debugf(ctx, "notify matched job update: %v", gconv.String(update))
+	replyMarkup, replyMessage, err := BuildMatchedJobListNotificationInlineKeyboard(ctx, gconv.String(update.CallbackQuery.From.ID), update)
+	if err != nil {
+		g.Log().Line().Error(ctx, "build matched job list inline keyboard error : ", err)
+		return
+	}
+
+	respMsg, err := b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
+		MessageID:   update.CallbackQuery.Message.Message.ID,
+		Text:        replyMessage,
+		ReplyMarkup: replyMarkup,
+	})
+
+	if err != nil {
+		g.Log().Line().Error(ctx, "notify matched job edit message error : ", err)
+		g.Log().Line().Error(ctx, "notify matched job edit failed response message : ", gconv.String(respMsg))
+	}
+}

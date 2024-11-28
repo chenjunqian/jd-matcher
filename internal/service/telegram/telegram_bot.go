@@ -17,6 +17,7 @@ func InitTelegramBot(ctx context.Context) {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(defaultHandler),
 		bot.WithCallbackQueryDataHandler(MATCHED_JOBS_CALLBACK_DATA_PREFIX, bot.MatchTypePrefix, matchedJobsCallbackHandler),
+		bot.WithCallbackQueryDataHandler(NOTIFY_MATCHED_JOBS_CALLBACK_DATA_PREFIX, bot.MatchTypePrefix, matchedNotifyMatchedJobCallBackHandler),
 	}
 
 	var err error

@@ -68,12 +68,22 @@ func UpdateUserResume(ctx context.Context, telegramId string, resume string, res
 	return
 }
 
-func GetUserInfoCount(ctx context.Context) (count int, err error) {
-	count, err = UserInfo.Ctx(ctx).Where("resume is not null and resume_embedding is not null").Count()
+func GetAllUserInfoCount(ctx context.Context) (count int, err error) {
+	count, err = UserInfo.Ctx(ctx).Count()
 	return
 }
 
 func GetUserInfoList(ctx context.Context, offset, limit int) (result []entity.UserInfo, err error) {
+	err = UserInfo.Ctx(ctx).Limit(limit).Offset(offset).Scan(&result)
+	return
+}
+
+func GetEmptyResumeUserInfoCount(ctx context.Context) (count int, err error) {
+	count, err = UserInfo.Ctx(ctx).Where("resume is not null and resume_embedding is not null").Count()
+	return
+}
+
+func GetEmptyResumeUserInfoList(ctx context.Context, offset, limit int) (result []entity.UserInfo, err error) {
 	err = UserInfo.Ctx(ctx).Where("resume is not null and resume_embedding is not null").Limit(limit).Offset(offset).Scan(&result)
 	return
 }
