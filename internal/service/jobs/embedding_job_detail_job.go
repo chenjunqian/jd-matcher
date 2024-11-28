@@ -13,7 +13,7 @@ import (
 
 func StartEmbeddingJobDetailJob(ctx context.Context) {
 
-	_, err := gcron.Add(ctx, "@every 3h30m", func(ctx context.Context) {
+	_, err := gcron.Add(ctx, "0 0 */1 * * *", func(ctx context.Context) {
 		startTime := gtime.Now()
 		runEmbeddingJobDetailJob(ctx)
 		finishTime := gtime.Now()

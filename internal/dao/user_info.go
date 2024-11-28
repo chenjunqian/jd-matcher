@@ -42,7 +42,13 @@ func CreateUserInfoIfNotExist(ctx context.Context, userInfo entity.UserInfo) (er
 	}
 
 	userInfo.Id = guid.S()
-	_, err = UserInfo.Ctx(ctx).Insert(userInfo)
+
+	_, err = g.Model("user_info").Ctx(ctx).Data(g.Map{
+		"id":           userInfo.Id,
+		"telegram_id":  userInfo.TelegramId,
+		"name":         userInfo.Name,
+		"resume":       userInfo.Resume,
+	}).Insert()
 
 	return
 }

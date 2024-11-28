@@ -12,7 +12,7 @@ import (
 
 func StartFindMatchJobByResumeJob(ctx context.Context) {
 
-	_, err := gcron.Add(ctx, "0 0 */3 * * *", func(ctx context.Context) {
+	_, err := gcron.Add(ctx, "0 0 */1 * * *", func(ctx context.Context) {
 		startTime := gtime.Now()
 		runFindMatchJobByResumeJob(ctx)
 		finishTime := gtime.Now()
