@@ -62,10 +62,7 @@ func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, updat
 		return
 	}
 
-	totalPage := matchJobTotalCount / limit
-	if matchJobTotalCount%limit != 0 {
-		totalPage = totalPage + 1
-	}
+	totalPage := calculateTotalPages(matchJobTotalCount, limit)
 
 	replyMarkup = &models.InlineKeyboardMarkup{
 		InlineKeyboard: [][]models.InlineKeyboardButton{
@@ -83,4 +80,44 @@ func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, updat
 	}
 
 	return
+}
+
+func BuildMatchedJobListNotificationReply(ctx context.Context, telegramId string, update *models.Update) (replyMessage string, err error) {
+
+	userInfo, err := dao.GetUserInfoByTelegramId(ctx, telegramId)
+	if err != nil {
+		g.Log().Line().Errorf(ctx, "get user %s info failed : %v", telegramId, err)
+		replyMessage = "There is something wrong with my service. Please try again later."
+		return
+	}
+	userNonNotifiedCount, err := dao.GetUserNonNotifiedJobTotalCount(ctx, userInfo.Id)
+	if err != nil {
+		g.Log().Line().Errorf(ctx, "get user %s non notified job total count failed : %v", userInfo.Id, err)
+		return
+	}
+	if userNonNotifiedCount == 0 {
+		return
+	}
+
+	userMatchJobList, err := dao.GetUserNonNotifiedJobList(ctx, userInfo.Id, 0, 10)
+	if err != nil {
+		g.Log().Line().Errorf(ctx, "get user %s non notified job list failed : %v", userInfo.Id, err)
+		return
+	}
+	for _, job := range userMatchJobList {
+		replyMessage = replyMessage + fmt.Sprintf("Title : %s\nLink : %s\nLocation : %s\nSalary : %s\nDate : %s\n\n", job.Title, job.Link, job.Location, job.Salary, job.UpdateTime.Format("Y-m-d"))
+	}
+
+	if replyMessage != "" {
+		replyMessage = replyMessage + "You can use /jobs to get all available jobs for you."
+	}
+
+	return
+}
+
+func calculateTotalPages(totalCount, pageSize int) int {
+	if totalCount%pageSize == 0 {
+		return totalCount / pageSize
+	}
+	return (totalCount / pageSize) + 1
 }

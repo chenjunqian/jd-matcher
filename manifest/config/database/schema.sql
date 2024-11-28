@@ -30,6 +30,7 @@ CREATE TABLE user_info (
 CREATE TABLE user_matched_job (
     user_id varchar(64) NOT NULL,
     job_id varchar(64) NOT NULL,
-    update_time timestamp,
-    PRIMARY KEY (user_id, job_id),
+    update_time timestamp without time zone,
+    notification boolean DEFAULT false,
+    PRIMARY KEY (user_id, job_id)
 );
