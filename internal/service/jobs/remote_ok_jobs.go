@@ -59,6 +59,7 @@ func storeRemoteOkJobs(ctx context.Context, jobs []crawler.CommonJob) (err error
 			Location: job.Location,
 			Salary:   job.Salary,
 			UpdateTime: updateTime,
+			JobDescEmbedding: []float32{},
 		})
 	}
 	err = dao.CreateJobDetailIfNotExist(ctx, jobEntities)
