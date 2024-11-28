@@ -46,10 +46,6 @@ func CreateJobDetailIfNotExist(ctx context.Context, jobDetails []entity.JobDetai
 			jobDetail.JobTags = []string{}
 		}
 
-		if jobDetail.JobDescEmbedding == nil {
-			jobDetail.JobDescEmbedding = []float32{'0'}
-		}
-
 		_, err = g.Model("job_detail").Ctx(ctx).Data(g.Map{
 			"id":          jobDetail.Id,
 			"title":       jobDetail.Title,
