@@ -104,3 +104,8 @@ func GetUserNonNotifiedJobTotalCount(ctx context.Context, userId string) (count 
 		Count()
 	return
 }
+
+func UpdateAllMatchJobNotified(ctx context.Context, userId string) (err error) {
+	_, err = UserMatchedJob.Ctx(ctx).Data(g.Map{"notification": true}).Where("user_id = ? and notification = false", userId).Update()
+	return
+}

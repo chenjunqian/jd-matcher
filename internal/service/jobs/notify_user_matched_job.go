@@ -80,17 +80,23 @@ func notifyUserNewMatchJob(ctx context.Context, userInfo entity.UserInfo) {
 		return
 	}
 
-	replyMarkup, replyMessage, err := telegram.BuildMatchedJobListNotificationInlineKeyboard(ctx, userInfo.TelegramId, nil)
+	replyMessage, err := telegram.BuildMatchedJobListNotificationReply(ctx, userInfo.TelegramId, nil)
 	if err != nil {
 		g.Log().Line().Errorf(ctx, "build matched job list notification inline keyboard error : %v", err)
 		return
 	}
 
+	telegram.GetTelegramBot().SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: userInfo.TelegramId,
+		Text:   "You have new matched jobs, please check.",
+	})
+
 	respMsg, err := telegram.GetTelegramBot().SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      userInfo.TelegramId,
 		Text:        replyMessage,
-		ReplyMarkup: replyMarkup,
 	})
+
+	dao.UpdateAllMatchJobNotified(ctx, userInfo.Id)
 
 	if err != nil {
 		g.Log().Line().Errorf(ctx, "send user %s matched job edit message error : %v", userInfo.Id, err)
