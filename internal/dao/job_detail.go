@@ -46,7 +46,21 @@ func CreateJobDetailIfNotExist(ctx context.Context, jobDetails []entity.JobDetai
 			jobDetail.JobTags = []string{}
 		}
 
-		_, err = JobDetail.Ctx(ctx).Insert(jobDetail)
+		if jobDetail.JobDescEmbedding == nil {
+			jobDetail.JobDescEmbedding = []float32{'0'}
+		}
+
+		_, err = g.Model("job_detail").Ctx(ctx).Data(g.Map{
+			"id":          jobDetail.Id,
+			"title":       jobDetail.Title,
+			"job_desc":    jobDetail.JobDesc,
+			"job_tags":    jobDetail.JobTags,
+			"link":        jobDetail.Link,
+			"source":      jobDetail.Source,
+			"location":    jobDetail.Location,
+			"salary":      jobDetail.Salary,
+			"update_time": jobDetail.UpdateTime,
+		}).Insert()
 		if err != nil {
 			allError = append(allError, err)
 		}

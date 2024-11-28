@@ -14,7 +14,7 @@ import (
 
 func StartRemoteOkMainPageJob(ctx context.Context) {
 
-	_, err := gcron.Add(ctx, "@every 3h", func(ctx context.Context) {
+	_, err := gcron.Add(ctx, "0 0 */2 * * *", func(ctx context.Context) {
 		startTime := gtime.Now()
 		runRemoteOkMainPageJob(ctx)
 		finishTime := gtime.Now()
@@ -48,7 +48,6 @@ func storeRemoteOkJobs(ctx context.Context, jobs []crawler.CommonJob) (err error
 			g.Log().Line().Error(ctx, "parse remote ok job update time error : ", err)
 			updateTime = gtime.Now()
 		}
-		g.Log().Line().Debugf(ctx, "the update time is %v", updateTime.String())
 		jobEntities = append(jobEntities, entity.JobDetail{
 			Id:       guid.S(),
 			Title:    job.Title,
@@ -59,7 +58,6 @@ func storeRemoteOkJobs(ctx context.Context, jobs []crawler.CommonJob) (err error
 			Location: job.Location,
 			Salary:   job.Salary,
 			UpdateTime: updateTime,
-			JobDescEmbedding: []float32{},
 		})
 	}
 	err = dao.CreateJobDetailIfNotExist(ctx, jobEntities)
