@@ -10,6 +10,7 @@ type UserInfo struct {
 	Name            string    `json:"name"            orm:"name"             description:""` //
 	Email           string    `json:"email"           orm:"email"            description:""` //
 	TelegramId      string    `json:"telegramId"      orm:"telegram_id"      description:""` //
-	ResumeEmbedding []float32 `json:"resumeEmbedding" orm:"resume_embedding" description:""` //
 	Resume          string    `json:"resume"          orm:"resume"           description:""` //
+	ResumeEmbedding []float32 `json:"resumeEmbedding" orm:"resume_embedding" description:""` //
+	JobExpectations string    `json:"jobExpectations" orm:"job_expectations" description:""` //
 }

@@ -14,4 +14,6 @@ type UserMatchedJob struct {
 	JobId        string      `json:"jobId"        orm:"job_id"       description:""` //
 	UpdateTime   *gtime.Time `json:"updateTime"   orm:"update_time"  description:""` //
 	Notification bool        `json:"notification" orm:"notification" description:""` //
+	MatchScore   string      `json:"matchScore"   orm:"match_score"  description:""` //
+	MatchReason  string      `json:"matchReason"  orm:"match_reason" description:""` //
 }

@@ -3,11 +3,15 @@ package jobs
 import (
 	"context"
 	"jd-matcher/internal/dao"
+	"jd-matcher/internal/model/dto"
 	"jd-matcher/internal/model/entity"
+	"jd-matcher/internal/service/llm"
 
+	"github.com/gogf/gf/v2/encoding/gjson"
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/os/gcron"
 	"github.com/gogf/gf/v2/os/gtime"
+	"github.com/gogf/gf/v2/util/gconv"
 )
 
 func StartFindMatchJobByResumeJob(ctx context.Context) {
@@ -73,12 +77,61 @@ func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo)
 		return
 	}
 
-	var matchJobs []entity.UserMatchedJob
+	var matchJobsInput []dto.UserMatchedJobPromptInput
 	for _, job := range jobList {
-		matchJobs = append(matchJobs, entity.UserMatchedJob{
-			UserId: userInfo.Id,
-			JobId:  job.Id,
-		})
+		inputJob := dto.UserMatchedJobPromptInput{
+			JobId:          job.Id,
+			JobTitle:       job.Title,
+			JobLink:        job.Link,
+			JobDescription: job.JobDesc,
+			Location:       job.Location,
+			Salary:         job.Salary,
+		}
+		matchJobsInput = append(matchJobsInput, inputJob)
+	}
+
+	matchjobsJsonStr := gjson.New(matchJobsInput).MustToJsonIndentString()
+	g.Log().Line().Debugf(ctx, "match jobs JSON string :\n%s", matchjobsJsonStr)
+
+	resumeStr := userInfo.Resume
+	g.Log().Line().Debugf(ctx, "resume string :\n%s", resumeStr)
+
+	jobExpectations := userInfo.JobExpectations
+	g.Log().Line().Debugf(ctx, "job expectations string :\n%s", jobExpectations)
+
+	promptTemp, err := llm.GetJobMatchPromptTemplate(ctx)
+	if err != nil {
+		g.Log().Line().Error(ctx, "get job match prompt template error : ", err)
+		return
+	}
+
+	prompt := llm.GenerateResumeMatchPrompt(ctx, promptTemp, resumeStr, jobExpectations, matchjobsJsonStr)
+	g.Log().Line().Debugf(ctx, "generate resume match prompt :/n%s", prompt)
+
+	completion, err := llm.GenerateMatchJobByResumeResult(ctx, prompt)
+	if err != nil {
+		g.Log().Line().Error(ctx, "generate match job by resume result error : ", err)
+		return
+	}
+	g.Log().Line().Debugf(ctx, "generate match job by resume result :\n%s", completion)
+
+	var outputJobList []dto.UserMatchedJobPromptOutput
+	outputJson, err := gjson.LoadContent(gconv.Bytes(completion))
+	if err != nil {
+		g.Log().Line().Errorf(ctx, "decode json error :\n%s", err)
+		return
+	}
+	outputJson.GetJson("matchingJobs").Scan(&outputJobList)
+
+	var matchJobs []entity.UserMatchedJob
+	for _, outputJob := range outputJobList {
+		matchJob := entity.UserMatchedJob{
+			UserId:      userInfo.Id,
+			JobId:       outputJob.JobId,
+			MatchScore:  outputJob.MatchScore,
+			MatchReason: outputJob.Reason,
+		}
+		matchJobs = append(matchJobs, matchJob)
 	}
 
 	err = dao.CreateMatchJobIfNotExist(ctx, matchJobs)
