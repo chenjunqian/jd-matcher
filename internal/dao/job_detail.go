@@ -97,6 +97,6 @@ func UpdateJobDetailEmbedding(ctx context.Context, entity entity.JobDetail) (err
 }
 
 func QueryJobDetailByEmbedding(ctx context.Context, embedding []float32) (entities []entity.JobDetail, err error) {
-	err = JobDetail.Ctx(ctx).Raw("SELECT * FROM job_detail ORDER BY job_desc_embedding <-> ? LIMIT 5;", pgvector.NewVector(embedding)).Scan(&entities)
+	err = JobDetail.Ctx(ctx).Raw("SELECT * FROM job_detail ORDER BY job_desc_embedding <-> ? LIMIT 10;", pgvector.NewVector(embedding)).Scan(&entities)
 	return
 }
