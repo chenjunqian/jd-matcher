@@ -24,8 +24,9 @@ type UserInfoColumns struct {
 	Name            string //
 	Email           string //
 	TelegramId      string //
-	ResumeEmbedding string //
 	Resume          string //
+	ResumeEmbedding string //
+	JobExpectations string //
 }
 
 // userInfoColumns holds the columns for table user_info.
@@ -34,8 +35,9 @@ var userInfoColumns = UserInfoColumns{
 	Name:            "name",
 	Email:           "email",
 	TelegramId:      "telegram_id",
-	ResumeEmbedding: "resume_embedding",
 	Resume:          "resume",
+	ResumeEmbedding: "resume_embedding",
+	JobExpectations: "job_expectations",
 }
 
 // NewUserInfoDao creates and returns a new DAO object for table data access.

@@ -24,6 +24,8 @@ type UserMatchedJobColumns struct {
 	JobId        string //
 	UpdateTime   string //
 	Notification string //
+	MatchScore   string //
+	MatchReason  string //
 }
 
 // userMatchedJobColumns holds the columns for table user_matched_job.
@@ -32,6 +34,8 @@ var userMatchedJobColumns = UserMatchedJobColumns{
 	JobId:        "job_id",
 	UpdateTime:   "update_time",
 	Notification: "notification",
+	MatchScore:   "match_score",
+	MatchReason:  "match_reason",
 }
 
 // NewUserMatchedJobDao creates and returns a new DAO object for table data access.

@@ -15,6 +15,7 @@ CREATE TABLE job_detail (
 );
 
 CREATE INDEX pgroonga_idx_job_desc ON job_detail USING pgroonga ("job_desc");
+
 ALTER TABLE job_detail ADD CONSTRAINT unique_link UNIQUE (link);
 
 CREATE TABLE user_info (
@@ -24,6 +25,7 @@ CREATE TABLE user_info (
     telegram_id varchar(64),
     resume_embedding vector,
     resume text,
+    job_expectations text,
     PRIMARY KEY (id)
 );
 
@@ -32,5 +34,7 @@ CREATE TABLE user_matched_job (
     job_id varchar(64) NOT NULL,
     update_time timestamp without time zone,
     notification boolean DEFAULT false,
+    match_score varchar,
+    match_reason text,
     PRIMARY KEY (user_id, job_id)
 );
