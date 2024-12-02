@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"jd-matcher/internal/dao"
 	"jd-matcher/internal/model/entity"
 	"jd-matcher/internal/service/telegram"
@@ -21,6 +22,7 @@ func StartNotifyUserMatchedJob(ctx context.Context) {
 		finishTime := gtime.Now()
 		g.Log().Line().Infof(ctx, "notify matched job cost %s", finishTime.Sub(startTime).String())
 	}, "notify_matched_job")
+	runNotifyUserMatchedJob(ctx)
 
 	if err != nil {
 		g.Log().Line().Error(ctx, "add notify matched job error :", err)
@@ -80,10 +82,21 @@ func notifyUserNewMatchJob(ctx context.Context, userInfo entity.UserInfo) {
 		return
 	}
 
-	replyMessage, err := telegram.BuildMatchedJobListNotificationReply(ctx, userInfo.TelegramId, nil)
+	userMatchJobList, err := dao.GetUserNonNotifiedJobList(ctx, userInfo.Id, 0, 10)
 	if err != nil {
-		g.Log().Line().Errorf(ctx, "build matched job list notification inline keyboard error : %v", err)
+		g.Log().Line().Errorf(ctx, "get user %s non notified job list failed : %v", userInfo.Id, err)
 		return
+	} else if len(userMatchJobList) == 0 {
+		return
+	}
+
+	var replyMessage string
+	for _, job := range userMatchJobList {
+		replyMessage = replyMessage + fmt.Sprintf("Title : %s\nLink : %s\nLocation : %s\nSalary : %s\nMatch Score : %s\nDate : %s\n\n", job.Title, job.Link, job.Location, job.Salary, job.MatchScore, job.UpdateTime.Format("Y-m-d"))
+	}
+
+	if replyMessage != "" {
+		replyMessage = replyMessage + "You can use /jobs to get all available jobs for you."
 	}
 
 	telegram.GetTelegramBot().SendMessage(ctx, &bot.SendMessageParams{
@@ -92,8 +105,8 @@ func notifyUserNewMatchJob(ctx context.Context, userInfo entity.UserInfo) {
 	})
 
 	respMsg, err := telegram.GetTelegramBot().SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      userInfo.TelegramId,
-		Text:        replyMessage,
+		ChatID: userInfo.TelegramId,
+		Text:   replyMessage,
 	})
 
 	dao.UpdateAllMatchJobNotified(ctx, userInfo.Id)

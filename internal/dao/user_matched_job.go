@@ -86,10 +86,10 @@ func GetUserMatchedJobDetailListTotalCount(ctx context.Context, userId string) (
 func GetUserNonNotifiedJobList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error) {
 
 	g.Model("user_matched_job umj").
-		LeftJoin("job_detail jd", "umj.job_id = jd.id").
-		Fields("jd.*, umj.user_id").
+		InnerJoin("job_detail jd", "umj.job_id = jd.id").
+		Fields("jd.*, umj.user_id, umj.match_score").
 		Where("umj.notification = ? and umj.user_id = ?", false, userId).
-		Order("umj.update_time desc").
+		Order("umj.match_score desc").
 		Limit(limit).
 		Offset(offset).
 		Scan(&entities)
