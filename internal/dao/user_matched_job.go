@@ -38,10 +38,7 @@ func CreateMatchJobIfNotExist(ctx context.Context, matchedJobs []entity.UserMatc
 	for _, matchJob := range matchedJobs {
 		var existEntity entity.UserMatchedJob
 		var err error
-		err = UserMatchedJob.Ctx(ctx).Where("user_id = ? and job_id = ?", matchJob.UserId, matchJob.JobId).Scan(&existEntity)
-		if err != nil {
-			allError = append(allError, err)
-		}
+		UserMatchedJob.Ctx(ctx).Where("user_id = ? and job_id = ?", matchJob.UserId, matchJob.JobId).Scan(&existEntity)
 		if existEntity.JobId != "" {
 			g.Log().Line().Debugf(ctx, "match job %s exist for user %s, skip it", matchJob.JobId, matchJob.UserId)
 			continue

@@ -13,6 +13,7 @@ func Register(ctx context.Context) {
 	StartEmbeddingJobDetailJob(ctx)
 	StartFindMatchJobByResumeJob(ctx)
 	StartNotifyUserMatchedJob(ctx)
+	StartWeWorkRemotelyParseJob(ctx)
 	entities := gcron.Entries()
 
 	for _, entity := range entities {
