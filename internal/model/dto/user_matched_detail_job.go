@@ -12,6 +12,7 @@ type UserMatchedDetailJob struct {
 	Source           string      `json:"source" orm:"source" description:""`                       //
 	Location         string      `json:"location" orm:"location" description:""`                   //
 	Salary           string      `json:"salary" orm:"salary" description:""`                       //
+	MatchScore       string      `json:"matchScore" orm:"match_score" description:""`              //
 	UpdateTime       *gtime.Time `json:"updateTime" orm:"update_time" description:""`              //
 	JobDescEmbedding []float32   `json:"jobDescEmbedding" orm:"job_desc_embedding" description:""` //
 }
