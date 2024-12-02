@@ -49,7 +49,7 @@ func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, updat
 	}
 
 	for _, job := range matchJobList {
-		replyMessage = replyMessage + fmt.Sprintf("Title : %s\nLink : %s\nLocation : %s\nSalary : %s\nDate : %s\n\n", job.Title, job.Link, job.Location, job.Salary, job.UpdateTime.Format("Y-m-d"))
+		replyMessage = replyMessage + fmt.Sprintf("Title : %s\nLink : %s\nLocation : %s\nSalary : %s\nMatch Score : %s\nDate : %s\n\n", job.Title, job.Link, job.Location, job.Salary, job.MatchScore, job.UpdateTime.Format("Y-m-d"))
 	}
 
 	if replyMessage == "" {

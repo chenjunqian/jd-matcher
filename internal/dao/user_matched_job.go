@@ -58,17 +58,16 @@ func CreateMatchJobIfNotExist(ctx context.Context, matchedJobs []entity.UserMatc
 	return
 }
 
-func GetUserMatchedJobDetailList(ctx context.Context, userId string, offset, limit int) (entities []entity.JobDetail, err error) {
+func GetUserMatchedJobDetailList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error) {
 
 	g.Model("user_matched_job umj").
-		LeftJoin("job_detail jd", "umj.job_id = jd.id").
-		Fields("jd.*").
+		InnerJoin("job_detail jd", "umj.job_id = jd.id").
+		Fields("jd.*, umj.user_id, umj.match_score").
 		Where("umj.user_id = ?", userId).
 		Order("umj.update_time desc").
 		Limit(limit).
 		Offset(offset).
 		Scan(&entities)
-
 	return
 }
 
