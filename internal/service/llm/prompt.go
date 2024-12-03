@@ -5,6 +5,7 @@ import (
 
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/os/gfile"
 	"github.com/gogf/gf/v2/os/gres"
 	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/gogf/gf/v2/util/gconv"
@@ -13,6 +14,10 @@ import (
 func GetJobMatchPromptTemplate(ctx context.Context) (promptTemp string, err error) {
 
 	promptTempContent := gres.GetContent("resource/prompt/resume_match.md")
+
+	if promptTempContent == nil || len(promptTempContent) == 0 {
+		promptTempContent = []byte(gfile.GetContents("resource/prompt/resume_match.md"))
+	}
 
 	if promptTempContent == nil || len(promptTempContent) == 0 {
 		err = gerror.New("resource/prompt/resume_match.md not found")
