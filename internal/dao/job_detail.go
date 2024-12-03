@@ -100,3 +100,11 @@ func QueryJobDetailByEmbedding(ctx context.Context, embedding []float32) (entiti
 	err = JobDetail.Ctx(ctx).Raw("SELECT * FROM job_detail ORDER BY job_desc_embedding <-> ? LIMIT 10;", pgvector.NewVector(embedding)).Scan(&entities)
 	return
 }
+
+func QueryNonNotifiedJobDetailByEmbedding(ctx context.Context, embedding []float32) (entities []entity.JobDetail, err error) {
+	err = JobDetail.Ctx(ctx).Raw(
+		"SELECT * FROM job_detail LEFT JOIN user_matched_job umj ON job_detail.id = umj.job_id WHERE umj.job_id is null ORDER BY job_desc_embedding <-> ? LIMIT 30;",
+		pgvector.NewVector(embedding),
+	).Scan(&entities)
+	return
+}

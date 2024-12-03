@@ -72,7 +72,7 @@ func runFindMatchJobByResumeJob(ctx context.Context) {
 func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo) {
 
 	g.Log().Line().Infof(ctx, "start query match job by resume job for user %s", userInfo.Name)
-	jobList, err := dao.QueryJobDetailByEmbedding(ctx, userInfo.ResumeEmbedding)
+	jobList, err := dao.QueryNonNotifiedJobDetailByEmbedding(ctx, userInfo.ResumeEmbedding)
 	if err != nil {
 		g.Log().Line().Error(ctx, "query job by resume embedding error : ", err)
 		return
