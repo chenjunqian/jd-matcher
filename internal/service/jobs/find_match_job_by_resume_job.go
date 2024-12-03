@@ -6,6 +6,7 @@ import (
 	"jd-matcher/internal/model/dto"
 	"jd-matcher/internal/model/entity"
 	"jd-matcher/internal/service/llm"
+	"time"
 
 	"github.com/gogf/gf/v2/encoding/gjson"
 	"github.com/gogf/gf/v2/frame/g"
@@ -16,7 +17,7 @@ import (
 
 func StartFindMatchJobByResumeJob(ctx context.Context) {
 
-	_, err := gcron.Add(ctx, "0 0 */1 * * *", func(ctx context.Context) {
+	_, err := gcron.Add(ctx, "0 0 */3 * * *", func(ctx context.Context) {
 		startTime := gtime.Now()
 		runFindMatchJobByResumeJob(ctx)
 		finishTime := gtime.Now()
@@ -72,7 +73,9 @@ func runFindMatchJobByResumeJob(ctx context.Context) {
 func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo) {
 
 	g.Log().Line().Infof(ctx, "start query match job by resume job for user %s", userInfo.Name)
-	jobList, err := dao.QueryNonNotifiedJobDetailByEmbedding(ctx, userInfo.ResumeEmbedding)
+	oneMonthAgo := time.Now().AddDate(0, -1, 0)
+	oneMonthAgoStr := oneMonthAgo.Format("2006-01-02")
+	jobList, err := dao.QueryNonNotifiedJobDetailByEmbedding(ctx, oneMonthAgoStr, userInfo.ResumeEmbedding)
 	if err != nil {
 		g.Log().Line().Error(ctx, "query job by resume embedding error : ", err)
 		return
@@ -122,7 +125,16 @@ func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo)
 		g.Log().Line().Errorf(ctx, "decode prompt result json error :\n%s", err)
 		return
 	}
-	outputJson.GetJson("matchingJobs").Scan(&outputJobList)
+
+	outputJsonMap := outputJson.Map()
+	for key := range outputJsonMap {
+		jobJsonArray := outputJson.GetJsons(key)
+		if len(jobJsonArray) == 0 {
+			continue
+		}
+		outputJson.GetJson(key).Scan(&outputJobList)
+		break
+	}
 
 	var matchJobs []entity.UserMatchedJob
 	for _, outputJob := range outputJobList {
