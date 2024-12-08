@@ -95,13 +95,14 @@ func notifyUserNewMatchJob(ctx context.Context, userInfo entity.UserInfo) {
 	}
 
 	if replyMessage != "" {
-		replyMessage = replyMessage + "You can use /jobs to get all available jobs for you."
+		totalCount, err := dao.GetUserMatchedJobDetailListTotalCount(ctx, userInfo.Id)
+		if err != nil {
+			g.Log().Line().Errorf(ctx, "get user %s matched job total count failed : %v", userInfo.Id, err)
+			replyMessage = "You have new matched jobs, please check. \n\n" + replyMessage + "You can use /jobs to get all available jobs for you."
+		} else {
+			replyMessage = "You have new matched jobs, please check. \n\n" + replyMessage + "You can use /jobs to get all available jobs for you.\n\nTotal matched jobs : " + gconv.String(totalCount)
+		}
 	}
-
-	telegram.GetTelegramBot().SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: userInfo.TelegramId,
-		Text:   "You have new matched jobs, please check.",
-	})
 
 	respMsg, err := telegram.GetTelegramBot().SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: userInfo.TelegramId,
