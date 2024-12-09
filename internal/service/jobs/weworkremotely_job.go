@@ -37,10 +37,10 @@ func runWeworkRemotelyJob(ctx context.Context) {
 		return
 	}
 
-	_ = storeWeWorkRemotelyJobs(ctx, jobs)
+	_ = storeWeWorkRemotelyJobs(ctx, jobs, &dao.JobDetail)
 }
 
-func storeWeWorkRemotelyJobs(ctx context.Context, jobs []crawler.CommonJob) (err error) {
+func storeWeWorkRemotelyJobs(ctx context.Context, jobs []crawler.CommonJob, jobDetailDao dao.IJobDetail) (err error) {
 	var jobEntities []entity.JobDetail
 	for _, job := range jobs {
 		format := "Mon, 02 Jan 2006 15:04:05 -0700"
@@ -62,7 +62,7 @@ func storeWeWorkRemotelyJobs(ctx context.Context, jobs []crawler.CommonJob) (err
 			UpdateTime: updateTime,
 		})
 	}
-	err = dao.CreateJobDetailIfNotExist(ctx, jobEntities)
+	err = jobDetailDao.CreateJobDetailIfNotExist(ctx, jobEntities)
 	if err != nil {
 		g.Log().Line().Errorf(ctx, "add remote ok main page job failed :\n%+v\n", err)
 		return

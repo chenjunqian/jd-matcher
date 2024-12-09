@@ -10,6 +10,7 @@ require (
 	github.com/gogf/gf/contrib/drivers/pgsql/v2 v2.8.1
 	github.com/gogf/gf/v2 v2.8.1
 	github.com/tmc/langchaingo v0.1.9
+	go.uber.org/mock v0.5.0
 )
 
 require (

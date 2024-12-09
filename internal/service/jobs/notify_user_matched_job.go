@@ -18,10 +18,11 @@ func StartNotifyUserMatchedJob(ctx context.Context) {
 
 	_, err := gcron.Add(ctx, "0 0 */3 * * *", func(ctx context.Context) {
 		startTime := gtime.Now()
-		runNotifyUserMatchedJob(ctx)
+		runNotifyUserMatchedJob(ctx, &dao.UserInfo, &dao.UserMatchedJob)
 		finishTime := gtime.Now()
 		g.Log().Line().Infof(ctx, "notify matched job cost %s", finishTime.Sub(startTime).String())
 	}, "notify_matched_job")
+	runNotifyUserMatchedJob(ctx, &dao.UserInfo, &dao.UserMatchedJob)
 
 	if err != nil {
 		g.Log().Line().Error(ctx, "add notify matched job error :", err)
@@ -30,10 +31,10 @@ func StartNotifyUserMatchedJob(ctx context.Context) {
 	}
 }
 
-func runNotifyUserMatchedJob(ctx context.Context) {
+func runNotifyUserMatchedJob(ctx context.Context, userInfoDao dao.IUserInfo, userMatchedDao dao.IUserMatchedJob) (err error) {
 	g.Log().Line().Info(ctx, "start notify matched job")
 
-	totalUserCount, err := dao.GetAllUserInfoCount(ctx)
+	totalUserCount, err := userInfoDao.GetAllUserInfoCount(ctx)
 	if err != nil {
 		g.Log().Line().Error(ctx, "get user info count error : ", err)
 		return
@@ -47,32 +48,36 @@ func runNotifyUserMatchedJob(ctx context.Context) {
 	if totalUserCount > 100 {
 		// if total count more than 100, use batch embedding, query 100 at a time
 		for i := 0; i < totalUserCount; i += 100 {
-			userInfoList, err := dao.GetUserInfoList(ctx, i, 100)
+			var userInfoList []entity.UserInfo
+			userInfoList, err = userInfoDao.GetUserInfoList(ctx, i, 100)
 			if err != nil {
 				g.Log().Line().Error(ctx, "get user info list error : ", err)
 				return
 			}
 
 			for _, userInfo := range userInfoList {
-				notifyUserNewMatchJob(ctx, userInfo)
+				notifyUserNewMatchJob(ctx, userInfo, userMatchedDao)
 			}
 		}
 	} else {
-		userInfoList, err := dao.GetUserInfoList(ctx, 0, totalUserCount)
+		var userInfoList []entity.UserInfo
+		userInfoList, err = userInfoDao.GetUserInfoList(ctx, 0, totalUserCount)
 		if err != nil {
 			g.Log().Line().Error(ctx, "get user info list error : ", err)
 			return
 		}
 
 		for _, userInfo := range userInfoList {
-			notifyUserNewMatchJob(ctx, userInfo)
+			notifyUserNewMatchJob(ctx, userInfo, userMatchedDao)
 		}
 	}
+
+	return
 }
 
-func notifyUserNewMatchJob(ctx context.Context, userInfo entity.UserInfo) {
+func notifyUserNewMatchJob(ctx context.Context, userInfo entity.UserInfo, userMatchedDao dao.IUserMatchedJob) {
 
-	userNonNotifiedCount, err := dao.GetUserNonNotifiedJobTotalCount(ctx, userInfo.Id)
+	userNonNotifiedCount, err := userMatchedDao.GetUserNonNotifiedJobTotalCount(ctx, userInfo.Id)
 	if err != nil {
 		g.Log().Line().Errorf(ctx, "get user %s non notified job total count failed : %v", userInfo.Id, err)
 		return
@@ -81,7 +86,7 @@ func notifyUserNewMatchJob(ctx context.Context, userInfo entity.UserInfo) {
 		return
 	}
 
-	userMatchJobList, err := dao.GetUserNonNotifiedJobList(ctx, userInfo.Id, 0, 10)
+	userMatchJobList, err := userMatchedDao.GetUserNonNotifiedJobList(ctx, userInfo.Id, 0, 10)
 	if err != nil {
 		g.Log().Line().Errorf(ctx, "get user %s non notified job list failed : %v", userInfo.Id, err)
 		return
@@ -95,7 +100,7 @@ func notifyUserNewMatchJob(ctx context.Context, userInfo entity.UserInfo) {
 	}
 
 	if replyMessage != "" {
-		totalCount, err := dao.GetUserMatchedJobDetailListTotalCount(ctx, userInfo.Id)
+		totalCount, err := userMatchedDao.GetUserMatchedJobDetailListTotalCount(ctx, userInfo.Id)
 		if err != nil {
 			g.Log().Line().Errorf(ctx, "get user %s matched job total count failed : %v", userInfo.Id, err)
 			replyMessage = "You have new matched jobs, please check. \n\n" + replyMessage + "You can use /jobs to get all available jobs for you."
@@ -109,7 +114,7 @@ func notifyUserNewMatchJob(ctx context.Context, userInfo entity.UserInfo) {
 		Text:   replyMessage,
 	})
 
-	dao.UpdateAllMatchJobNotified(ctx, userInfo.Id)
+	userMatchedDao.UpdateAllMatchJobNotified(ctx, userInfo.Id)
 
 	if err != nil {
 		g.Log().Line().Errorf(ctx, "send user %s matched job edit message error : %v", userInfo.Id, err)

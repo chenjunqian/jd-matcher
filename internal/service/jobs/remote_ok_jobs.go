@@ -36,11 +36,11 @@ func runRemoteOkMainPageJob(ctx context.Context) {
 		return
 	}
 
-	_ = storeRemoteOkJobs(ctx, jobs)
+	_ = storeRemoteOkJobs(ctx, jobs, &dao.JobDetail)
 
 }
 
-func storeRemoteOkJobs(ctx context.Context, jobs []crawler.CommonJob) (err error) {
+func storeRemoteOkJobs(ctx context.Context, jobs []crawler.CommonJob, jobDetailDao dao.IJobDetail) (err error) {
 	var jobEntities []entity.JobDetail
 	for _, job := range jobs {
 		updateTime, err := gtime.StrToTime(job.UpdateTime)
@@ -60,7 +60,7 @@ func storeRemoteOkJobs(ctx context.Context, jobs []crawler.CommonJob) (err error
 			UpdateTime: updateTime,
 		})
 	}
-	err = dao.CreateJobDetailIfNotExist(ctx, jobEntities)
+	err = jobDetailDao.CreateJobDetailIfNotExist(ctx, jobEntities)
 	if err != nil {
 		g.Log().Line().Error(ctx, "add remote ok main page job failed : ", err)
 		return

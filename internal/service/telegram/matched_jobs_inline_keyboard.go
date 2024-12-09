@@ -17,7 +17,11 @@ var MATCHED_JOBS_TOTAL_PAGE_DATA = MATCHED_JOBS_CALLBACK_DATA_PREFIX + "total_pa
 var MATCHED_JOBS_NEXT_PAGE_DATA = MATCHED_JOBS_CALLBACK_DATA_PREFIX + "next_page"
 var MATCHED_JOBS_PRE_PAGE_DATA = MATCHED_JOBS_CALLBACK_DATA_PREFIX + "pre_page"
 
-func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, update *models.Update) (replyMarkup models.ReplyMarkup, replyMessage string, err error) {
+func getMatchedJobListInlineKeyboard(ctx context.Context, userId string, update *models.Update) (replyMarkup models.ReplyMarkup, replyMessage string, err error) {
+	return buildMatchedJobListInlineKeyboard(ctx, userId, update, &dao.UserMatchedJob)
+}
+
+func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, update *models.Update, userMatchedDao dao.IUserMatchedJob) (replyMarkup models.ReplyMarkup, replyMessage string, err error) {
 
 	var currentPage int = 0
 	// event from callback button, update inline keyboard
@@ -42,7 +46,7 @@ func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, updat
 
 	limit := 10
 	offset := currentPage * limit
-	matchJobList, err := dao.GetUserMatchedJobDetailList(ctx, userId, offset, limit)
+	matchJobList, err := userMatchedDao.GetUserMatchedJobDetailList(ctx, userId, offset, limit)
 	if err != nil {
 		g.Log().Line().Error(ctx, "get latest job list error : ", err)
 		return
@@ -56,7 +60,7 @@ func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, updat
 		replyMessage = "No matched job found, please try again later."
 	}
 
-	matchJobTotalCount, err := dao.GetUserMatchedJobDetailListTotalCount(ctx, userId)
+	matchJobTotalCount, err := userMatchedDao.GetUserMatchedJobDetailListTotalCount(ctx, userId)
 	if err != nil {
 		g.Log().Line().Error(ctx, "get matched job total count error : ", err)
 		return
@@ -80,6 +84,7 @@ func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, updat
 	}
 
 	return
+
 }
 
 func calculateTotalPages(totalCount, pageSize int) int {

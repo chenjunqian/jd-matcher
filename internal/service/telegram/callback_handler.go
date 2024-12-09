@@ -10,12 +10,14 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
-func resumeMatchCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func matchedJobsCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	matchedJobsCallback(ctx, b, update, &dao.UserInfo)
 }
 
-func matchedJobsCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func matchedJobsCallback(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo)  {
+	
 	g.Log().Line().Debugf(ctx, "update: %v", gconv.String(update))
-	userInfo, err := dao.GetUserInfoByTelegramId(ctx, gconv.String(update.CallbackQuery.From.ID))
+	userInfo, err := userInfoDao.GetUserInfoByTelegramId(ctx, gconv.String(update.CallbackQuery.From.ID))
 	if err != nil {
 		g.Log().Line().Error(ctx, "get user info error : ", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -30,7 +32,7 @@ func matchedJobsCallbackHandler(ctx context.Context, b *bot.Bot, update *models.
 		})
 		return
 	}
-	replyMarkup, replyMessage, err := buildMatchedJobListInlineKeyboard(ctx, userInfo.Id, update)
+	replyMarkup, replyMessage, err := getMatchedJobListInlineKeyboard(ctx, userInfo.Id, update)
 	if err != nil {
 		g.Log().Line().Error(ctx, "build matched job list inline keyboard error : ", err)
 		return

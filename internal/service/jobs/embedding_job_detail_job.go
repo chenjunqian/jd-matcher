@@ -15,7 +15,7 @@ func StartEmbeddingJobDetailJob(ctx context.Context) {
 
 	_, err := gcron.Add(ctx, "0 */10 * * * *", func(ctx context.Context) {
 		startTime := gtime.Now()
-		runEmbeddingJobDetailJob(ctx)
+		runEmbeddingJobDetailJob(ctx, &dao.JobDetail)
 		finishTime := gtime.Now()
 		g.Log().Line().Infof(ctx, "embedding job detail job cost %s", finishTime.Sub(startTime).String())
 	}, "embedding_job_detail_job")
@@ -27,10 +27,10 @@ func StartEmbeddingJobDetailJob(ctx context.Context) {
 	}
 }
 
-func runEmbeddingJobDetailJob(ctx context.Context) {
+func runEmbeddingJobDetailJob(ctx context.Context, jobDetailDao dao.IJobDetail) {
 	g.Log().Line().Info(ctx, "start embedding job detail job")
 
-	totalCount, err := dao.GetEmptyJobDescEmbeddingJobDetailTotalCount(ctx)
+	totalCount, err := jobDetailDao.GetEmptyJobDescEmbeddingJobDetailTotalCount(ctx)
 	if err != nil {
 		g.Log().Line().Error(ctx, "get empty job desc embedding job detail total count error : ", err)
 		return
@@ -44,30 +44,30 @@ func runEmbeddingJobDetailJob(ctx context.Context) {
 	if totalCount > 100 {
 		// if total count more than 100, use batch embedding, query 100 at a time
 		for i := 0; i < totalCount; i += 100 {
-			jobList, err := dao.GetEmptyJobDescEmbeddingJobList(ctx, i, 100)
+			jobList, err := jobDetailDao.GetEmptyJobDescEmbeddingJobList(ctx, i, 100)
 			if err != nil {
 				g.Log().Line().Error(ctx, "get empty job desc embedding job list error : ", err)
 				return
 			}
 
 			for _, job := range jobList {
-				embeddingJobDetailAndStore(ctx, job)
+				embeddingJobDetailAndStore(ctx, job, jobDetailDao)
 			}
 		}
 	} else {
-		jobList, err := dao.GetEmptyJobDescEmbeddingJobList(ctx, 0, totalCount)
+		jobList, err := jobDetailDao.GetEmptyJobDescEmbeddingJobList(ctx, 0, totalCount)
 		if err != nil {
 			g.Log().Line().Error(ctx, "get empty job desc embedding job list error : ", err)
 			return
 		}
 
 		for _, job := range jobList {
-			embeddingJobDetailAndStore(ctx, job)
+			embeddingJobDetailAndStore(ctx, job, jobDetailDao)
 		}
 	}
 }
 
-func embeddingJobDetailAndStore(ctx context.Context, job entity.JobDetail) (err error) {
+func embeddingJobDetailAndStore(ctx context.Context, job entity.JobDetail, jobDetailDao dao.IJobDetail) (err error) {
 	contents := []string{job.JobDesc}
 	vector, err := llm.EmbeddingText(ctx, contents)
 	if err != nil {
@@ -76,7 +76,7 @@ func embeddingJobDetailAndStore(ctx context.Context, job entity.JobDetail) (err 
 	}
 
 	job.JobDescEmbedding = vector[0]
-	err = dao.UpdateJobDetailEmbedding(ctx, job)
+	err = jobDetailDao.UpdateJobDetailEmbedding(ctx, job)
 	if err != nil {
 		g.Log().Line().Error(ctx, "update job detail embedding error : ", err)
 		return
