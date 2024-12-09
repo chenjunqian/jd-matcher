@@ -184,7 +184,7 @@ func getUploadResumeFIle(ctx context.Context, b *bot.Bot, update *models.Update,
 		resumeContent := resp.ReadAllString()
 		g.Log().Line().Debugf(ctx, "Get resume content: %s", resumeContent)
 		if resumeContent != "" {
-			vector, err := llm.EmbeddingText(ctx, []string{resumeContent})
+			vector, err := llm.GetClient().EmbeddingText(ctx, []string{resumeContent})
 			if err != nil {
 				g.Log().Line().Error(ctx, "embedding resume error : ", err)
 				b.SendMessage(ctx, &bot.SendMessageParams{

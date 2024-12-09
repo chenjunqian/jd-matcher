@@ -11,7 +11,7 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
-func GetJobMatchPromptTemplate(ctx context.Context) (promptTemp string, err error) {
+func (c *LLMClient) GetJobMatchPromptTemplate(ctx context.Context) (promptTemp string, err error) {
 
 	promptTempContent := gres.GetContent("resource/prompt/resume_match.md")
 
@@ -30,7 +30,7 @@ func GetJobMatchPromptTemplate(ctx context.Context) (promptTemp string, err erro
 	return
 }
 
-func GenerateResumeMatchPrompt(ctx context.Context, promptTemp, resume, expectation, jobList string) (prompt string) {
+func (c *LLMClient) GenerateResumeMatchPrompt(ctx context.Context, promptTemp, resume, expectation, jobList string) (prompt string) {
 
 	promptTemp = gstr.Replace(promptTemp, "{{ resume }}", resume)
 	promptTemp = gstr.Replace(promptTemp, "{{ expectations }}", expectation)
