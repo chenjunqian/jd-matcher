@@ -27,10 +27,9 @@ func TestEmbeddingText(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := InitOpenAIClient(tt.args.ctx)
 			if err != nil {
-				t.Log(err)
 				return
 			}
-			gotVector, err := EmbeddingText(tt.args.ctx, tt.args.contents)
+			gotVector, err := llmClient.EmbeddingText(tt.args.ctx, tt.args.contents)
 			if err != nil {
 				t.Log(err)
 				return

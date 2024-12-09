@@ -8,7 +8,18 @@ import (
 	"github.com/tmc/langchaingo/llms/openai"
 )
 
-var openAIClient *openai.LLM
+type LLMClient struct {
+	Client *openai.LLM
+}
+
+var llmClient *LLMClient
+
+type ILLMClient interface {
+	EmbeddingText(ctx context.Context, contents []string) (vector [][]float32, err error)
+	GenerateMatchJobByResumeResult(ctx context.Context, prompt string) (result string, err error)
+	GetJobMatchPromptTemplate(ctx context.Context) (promptTemp string, err error)
+	GenerateResumeMatchPrompt(ctx context.Context, promptTemp, resume, expectation, jobList string) (prompt string)
+}
 
 func InitOpenAIClient(ctx context.Context) error {
 	g.Log().Line().Info(ctx, "init openai client")
@@ -30,10 +41,15 @@ func InitOpenAIClient(ctx context.Context) error {
 	}
 
 	var err error
-	openAIClient, err = openai.New(opts...)
+	llmClient = new(LLMClient)
+	llmClient.Client, err = openai.New(opts...)
 	if err != nil {
 		g.Log().Fatal(ctx, err)
 	}
 
 	return err
+}
+
+func GetClient() *LLMClient {
+	return llmClient
 }

@@ -6,9 +6,9 @@ import (
 	"github.com/gogf/gf/v2/frame/g"
 )
 
-func EmbeddingText(ctx context.Context, contents []string) (vector [][]float32, err error) {
+func (c *LLMClient) EmbeddingText(ctx context.Context, contents []string) (vector [][]float32, err error) {
 
-	embeddings, err := openAIClient.CreateEmbedding(ctx, contents)
+	embeddings, err := c.Client.CreateEmbedding(ctx, contents)
 	if err != nil {
 		g.Log().Error(ctx, err)
 		return nil, err

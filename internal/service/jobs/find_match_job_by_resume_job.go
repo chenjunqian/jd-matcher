@@ -19,10 +19,11 @@ func StartFindMatchJobByResumeJob(ctx context.Context) {
 
 	_, err := gcron.Add(ctx, "0 0 */3 * * *", func(ctx context.Context) {
 		startTime := gtime.Now()
-		runFindMatchJobByResumeJob(ctx, &dao.UserInfo, &dao.UserMatchedJob, &dao.JobDetail)
+		runFindMatchJobByResumeJob(ctx, &dao.UserInfo, &dao.UserMatchedJob, &dao.JobDetail, llm.GetClient())
 		finishTime := gtime.Now()
 		g.Log().Line().Infof(ctx, "query match job by resume job cost %s", finishTime.Sub(startTime).String())
 	}, "query_match_job_by_resume_job")
+	runFindMatchJobByResumeJob(ctx, &dao.UserInfo, &dao.UserMatchedJob, &dao.JobDetail, llm.GetClient())
 
 	if err != nil {
 		g.Log().Line().Error(ctx, "add query match job by resume job error :", err)
@@ -31,7 +32,7 @@ func StartFindMatchJobByResumeJob(ctx context.Context) {
 	}
 }
 
-func runFindMatchJobByResumeJob(ctx context.Context, userInfoDao dao.IUserInfo, userMatchedDao dao.IUserMatchedJob, jobDetailDao dao.IJobDetail) {
+func runFindMatchJobByResumeJob(ctx context.Context, userInfoDao dao.IUserInfo, userMatchedDao dao.IUserMatchedJob, jobDetailDao dao.IJobDetail, llmClient llm.ILLMClient) {
 	g.Log().Line().Info(ctx, "start query match job by resume job")
 	totalCount, err := userInfoDao.GetEmptyResumeUserInfoCount(ctx)
 	if err != nil {
@@ -54,7 +55,7 @@ func runFindMatchJobByResumeJob(ctx context.Context, userInfoDao dao.IUserInfo, 
 			}
 
 			for _, userInfo := range userInfoList {
-				findMatchJobByResumeAndStore(ctx, userInfo, userMatchedDao, jobDetailDao)
+				findMatchJobByResumeAndStore(ctx, userInfo, userMatchedDao, jobDetailDao, llmClient)
 			}
 		}
 	} else {
@@ -65,12 +66,12 @@ func runFindMatchJobByResumeJob(ctx context.Context, userInfoDao dao.IUserInfo, 
 		}
 
 		for _, userInfo := range userInfoList {
-			findMatchJobByResumeAndStore(ctx, userInfo, userMatchedDao, jobDetailDao)
+			findMatchJobByResumeAndStore(ctx, userInfo, userMatchedDao, jobDetailDao, llmClient)
 		}
 	}
 }
 
-func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo, userMatchedDao dao.IUserMatchedJob, jobDetailDao dao.IJobDetail) {
+func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo, userMatchedDao dao.IUserMatchedJob, jobDetailDao dao.IJobDetail, llmClient llm.ILLMClient) {
 
 	g.Log().Line().Infof(ctx, "start query match job by resume job for user %s", userInfo.Name)
 	oneMonthAgo := time.Now().AddDate(0, -1, 0)
@@ -103,16 +104,16 @@ func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo,
 	jobExpectations := userInfo.JobExpectations
 	g.Log().Line().Debugf(ctx, "job expectations string :\n%s", jobExpectations)
 
-	promptTemp, err := llm.GetJobMatchPromptTemplate(ctx)
+	promptTemp, err := llmClient.GetJobMatchPromptTemplate(ctx)
 	if err != nil {
 		g.Log().Line().Error(ctx, "get job match prompt template error : ", err)
 		return
 	}
 
-	prompt := llm.GenerateResumeMatchPrompt(ctx, promptTemp, resumeStr, jobExpectations, matchjobsJsonStr)
+	prompt := llmClient.GenerateResumeMatchPrompt(ctx, promptTemp, resumeStr, jobExpectations, matchjobsJsonStr)
 	g.Log().Line().Debugf(ctx, "generate resume match prompt :/n%s", prompt)
 
-	completion, err := llm.GenerateMatchJobByResumeResult(ctx, prompt)
+	completion, err := llmClient.GenerateMatchJobByResumeResult(ctx, prompt)
 	if err != nil {
 		g.Log().Line().Error(ctx, "generate match job by resume result error : ", err)
 		return

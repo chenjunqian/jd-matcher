@@ -7,11 +7,11 @@ import (
 )
 
 
-func GenerateMatchJobByResumeResult(ctx context.Context, prompt string) (result string, err error) {
+func (c *LLMClient) GenerateMatchJobByResumeResult(ctx context.Context, prompt string) (result string, err error) {
 
 	result, err = llms.GenerateFromSinglePrompt(
 		ctx, 
-		openAIClient, 
+		llmClient.Client, 
 		prompt,
 		llms.WithJSONMode(),
 	)
