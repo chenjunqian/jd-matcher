@@ -12,6 +12,8 @@ require (
 	github.com/tmc/langchaingo v0.1.9
 )
 
+require go.uber.org/mock v0.5.0 // indirect
+
 require (
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/clbanning/mxj/v2 v2.7.0 // indirect

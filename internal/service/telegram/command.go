@@ -39,7 +39,7 @@ func handleCommandReply(ctx context.Context, b *bot.Bot, update *models.Update, 
 
 	switch command {
 	case "/start":
-		handleStartCommand(ctx, b, update)
+		handleStartCommand(ctx, b, update, &dao.UserInfo)
 	case "/help":
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -47,16 +47,16 @@ func handleCommandReply(ctx context.Context, b *bot.Bot, update *models.Update, 
 		})
 
 	case "/jobs":
-		handleJobsCommand(ctx, b, update)
+		handleJobsCommand(ctx, b, update, &dao.UserInfo)
 	case "/upload_resume":
-		handleUploadResumeCommand(ctx, b, update)
+		handleUploadResumeCommand(ctx, b, update, &dao.UserInfo)
 	}
 }
 
-func handleStartCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
+func handleStartCommand(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
 	userTelegramId := update.Message.From.ID
 	userName := update.Message.From.LastName + " " + update.Message.From.FirstName
-	userInfoEntity, err := dao.GetUserInfoByTelegramId(ctx, gconv.String(userTelegramId))
+	userInfoEntity, err := userInfoDao.GetUserInfoByTelegramId(ctx, gconv.String(userTelegramId))
 
 	var replyMessage string
 	var errorMessage = fmt.Sprintf("Hi %s ! I'm a bot that can help you find a job. Seems like there is something wrong with my service. Please try again later.", userName)
@@ -71,7 +71,7 @@ func handleStartCommand(ctx context.Context, b *bot.Bot, update *models.Update) 
 			TelegramId: gconv.String(userTelegramId),
 			Name:       userName,
 		}
-		err = dao.CreateUserInfoIfNotExist(ctx, userInfoEntity)
+		err = userInfoDao.CreateUserInfoIfNotExist(ctx, userInfoEntity)
 		if err != nil {
 			g.Log().Line().Error(ctx, "create user info error : ", err)
 			replyMessage = errorMessage
@@ -88,8 +88,8 @@ func handleStartCommand(ctx context.Context, b *bot.Bot, update *models.Update) 
 	})
 }
 
-func handleJobsCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
-	userInfo, err := dao.GetUserInfoByTelegramId(ctx, gconv.String(update.Message.From.ID))
+func handleJobsCommand(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
+	userInfo, err := userInfoDao.GetUserInfoByTelegramId(ctx, gconv.String(update.Message.From.ID))
 	if err != nil {
 		g.Log().Line().Error(ctx, "get user info error : ", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -104,7 +104,7 @@ func handleJobsCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
 		})
 		return
 	}
-	replyMarkup, replyMessage, err := buildMatchedJobListInlineKeyboard(ctx, userInfo.Id, update)
+	replyMarkup, replyMessage, err := getMatchedJobListInlineKeyboard(ctx, userInfo.Id, update)
 	if err != nil {
 		g.Log().Line().Error(ctx, "build matched job list inline keyboard error : ", err)
 		return
@@ -116,9 +116,9 @@ func handleJobsCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
 	})
 }
 
-func handleUploadResumeCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
+func handleUploadResumeCommand(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
 
-	isResumeExist, err := dao.IsUserHasUploadResume(ctx, gconv.String(update.Message.From.ID))
+	isResumeExist, err := userInfoDao.IsUserHasUploadResume(ctx, gconv.String(update.Message.From.ID))
 	if err != nil {
 		g.Log().Line().Error(ctx, "check user resume exist error : ", err)
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -143,7 +143,11 @@ func handleUploadResumeCommand(ctx context.Context, b *bot.Bot, update *models.U
 }
 
 func handleResumeFileUpload(ctx context.Context, b *bot.Bot, update *models.Update) {
+	getUploadResumeFIle(ctx, b, update, &dao.UserInfo)
+}
 
+func getUploadResumeFIle(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
+	
 	if !gstr.HasPrefix(update.Message.Document.MimeType, "text/") {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -189,7 +193,7 @@ func handleResumeFileUpload(ctx context.Context, b *bot.Bot, update *models.Upda
 				})
 				return
 			}
-			err = dao.UpdateUserResume(ctx, gconv.String(update.Message.From.ID), resumeContent, vector[0])
+			err = userInfoDao.UpdateUserResume(ctx, gconv.String(update.Message.From.ID), resumeContent, vector[0])
 			if err != nil {
 				g.Log().Line().Error(ctx, "update user resume error : ", err)
 				b.SendMessage(ctx, &bot.SendMessageParams{

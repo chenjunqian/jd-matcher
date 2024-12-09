@@ -19,7 +19,7 @@ func StartFindMatchJobByResumeJob(ctx context.Context) {
 
 	_, err := gcron.Add(ctx, "0 0 */3 * * *", func(ctx context.Context) {
 		startTime := gtime.Now()
-		runFindMatchJobByResumeJob(ctx)
+		runFindMatchJobByResumeJob(ctx, &dao.UserInfo, &dao.UserMatchedJob, &dao.JobDetail)
 		finishTime := gtime.Now()
 		g.Log().Line().Infof(ctx, "query match job by resume job cost %s", finishTime.Sub(startTime).String())
 	}, "query_match_job_by_resume_job")
@@ -31,9 +31,9 @@ func StartFindMatchJobByResumeJob(ctx context.Context) {
 	}
 }
 
-func runFindMatchJobByResumeJob(ctx context.Context) {
+func runFindMatchJobByResumeJob(ctx context.Context, userInfoDao dao.IUserInfo, userMatchedDao dao.IUserMatchedJob, jobDetailDao dao.IJobDetail) {
 	g.Log().Line().Info(ctx, "start query match job by resume job")
-	totalCount, err := dao.GetEmptyResumeUserInfoCount(ctx)
+	totalCount, err := userInfoDao.GetEmptyResumeUserInfoCount(ctx)
 	if err != nil {
 		g.Log().Line().Error(ctx, "get user info count error : ", err)
 		return
@@ -47,35 +47,35 @@ func runFindMatchJobByResumeJob(ctx context.Context) {
 	if totalCount > 100 {
 		// if total count more than 100, use batch embedding, query 100 at a time
 		for i := 0; i < totalCount; i += 100 {
-			userInfoList, err := dao.GetEmptyResumeUserInfoList(ctx, i, 100)
+			userInfoList, err := userInfoDao.GetEmptyResumeUserInfoList(ctx, i, 100)
 			if err != nil {
 				g.Log().Line().Error(ctx, "get user info list error : ", err)
 				return
 			}
 
 			for _, userInfo := range userInfoList {
-				findMatchJobByResumeAndStore(ctx, userInfo)
+				findMatchJobByResumeAndStore(ctx, userInfo, userMatchedDao, jobDetailDao)
 			}
 		}
 	} else {
-		userInfoList, err := dao.GetEmptyResumeUserInfoList(ctx, 0, totalCount)
+		userInfoList, err := userInfoDao.GetEmptyResumeUserInfoList(ctx, 0, totalCount)
 		if err != nil {
 			g.Log().Line().Error(ctx, "get user info list error : ", err)
 			return
 		}
 
 		for _, userInfo := range userInfoList {
-			findMatchJobByResumeAndStore(ctx, userInfo)
+			findMatchJobByResumeAndStore(ctx, userInfo, userMatchedDao, jobDetailDao)
 		}
 	}
 }
 
-func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo) {
+func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo, userMatchedDao dao.IUserMatchedJob, jobDetailDao dao.IJobDetail) {
 
 	g.Log().Line().Infof(ctx, "start query match job by resume job for user %s", userInfo.Name)
 	oneMonthAgo := time.Now().AddDate(0, -1, 0)
 	oneMonthAgoStr := oneMonthAgo.Format("2006-01-02")
-	jobList, err := dao.QueryJobDetailByEmbedding(ctx, oneMonthAgoStr, userInfo.ResumeEmbedding)
+	jobList, err := jobDetailDao.QueryJobDetailByEmbedding(ctx, oneMonthAgoStr, userInfo.ResumeEmbedding)
 	if err != nil {
 		g.Log().Line().Error(ctx, "query job by resume embedding error : ", err)
 		return
@@ -147,7 +147,7 @@ func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo)
 		matchJobs = append(matchJobs, matchJob)
 	}
 
-	err = dao.CreateMatchJobIfNotExist(ctx, matchJobs)
+	err = userMatchedDao.CreateMatchJobIfNotExist(ctx, matchJobs)
 	if err != nil {
 		g.Log().Line().Error(ctx, "create match job if not exist error : ", err)
 	}

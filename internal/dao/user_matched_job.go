@@ -32,7 +32,16 @@ var (
 )
 
 // Fill with you ideas below.
-func CreateMatchJobIfNotExist(ctx context.Context, matchedJobs []entity.UserMatchedJob) (err error) {
+type IUserMatchedJob interface {
+	CreateMatchJobIfNotExist(ctx context.Context, matchedJobs []entity.UserMatchedJob) error
+	GetUserMatchedJobDetailList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error) 
+	GetUserMatchedJobDetailListTotalCount(ctx context.Context, userId string) (count int, err error)
+	GetUserNonNotifiedJobList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error)
+	GetUserNonNotifiedJobTotalCount(ctx context.Context, userId string) (count int, err error)
+	UpdateAllMatchJobNotified(ctx context.Context, userId string) (err error)
+}
+
+func (dao *userMatchedJobDao) CreateMatchJobIfNotExist(ctx context.Context, matchedJobs []entity.UserMatchedJob) (err error) {
 
 	var allError []error
 	for _, matchJob := range matchedJobs {
@@ -55,7 +64,7 @@ func CreateMatchJobIfNotExist(ctx context.Context, matchedJobs []entity.UserMatc
 	return
 }
 
-func GetUserMatchedJobDetailList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error) {
+func (dao *userMatchedJobDao) GetUserMatchedJobDetailList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error) {
 
 	g.Model("user_matched_job umj").
 		InnerJoin("job_detail jd", "umj.job_id = jd.id").
@@ -68,7 +77,7 @@ func GetUserMatchedJobDetailList(ctx context.Context, userId string, offset, lim
 	return
 }
 
-func GetUserMatchedJobDetailListTotalCount(ctx context.Context, userId string) (count int, err error) {
+func (dao *userMatchedJobDao) GetUserMatchedJobDetailListTotalCount(ctx context.Context, userId string) (count int, err error) {
 
 	count, err = g.Model("user_matched_job umj").
 		LeftJoin("job_detail jd", "umj.job_id = jd.id").
@@ -79,7 +88,7 @@ func GetUserMatchedJobDetailListTotalCount(ctx context.Context, userId string) (
 
 }
 
-func GetUserNonNotifiedJobList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error) {
+func (dao *userMatchedJobDao) GetUserNonNotifiedJobList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error) {
 
 	g.Model("user_matched_job umj").
 		InnerJoin("job_detail jd", "umj.job_id = jd.id").
@@ -93,7 +102,7 @@ func GetUserNonNotifiedJobList(ctx context.Context, userId string, offset, limit
 
 }
 
-func GetUserNonNotifiedJobTotalCount(ctx context.Context, userId string) (count int, err error) {
+func (dao *userMatchedJobDao) GetUserNonNotifiedJobTotalCount(ctx context.Context, userId string) (count int, err error) {
 
 	count, err = g.Model("user_matched_job umj").
 		Where("umj.notification = ? and umj.user_id = ?", false, userId).
@@ -101,7 +110,7 @@ func GetUserNonNotifiedJobTotalCount(ctx context.Context, userId string) (count 
 	return
 }
 
-func UpdateAllMatchJobNotified(ctx context.Context, userId string) (err error) {
+func (dao *userMatchedJobDao) UpdateAllMatchJobNotified(ctx context.Context, userId string) (err error) {
 	_, err = UserMatchedJob.Ctx(ctx).Data(g.Map{"notification": true}).Where("user_id = ? and notification = false", userId).Update()
 	return
 }

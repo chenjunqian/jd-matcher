@@ -31,8 +31,19 @@ var (
 	}
 )
 
+type IJobDetail interface {
+	CreateJobDetailIfNotExist(ctx context.Context, jobDetails []entity.JobDetail) error
+	GetJobDetailById(ctx context.Context, id string) (result entity.JobDetail, err error)
+	GetLatestJobList(ctx context.Context, offset, limit int) (entities []entity.JobDetail, err error)
+	GetEmptyJobDescEmbeddingJobDetailTotalCount(ctx context.Context) (count int, err error)
+	GetEmptyJobDescEmbeddingJobList(ctx context.Context, offset, limit int) (entities []entity.JobDetail, err error)
+	UpdateJobDetailEmbedding(ctx context.Context, entity entity.JobDetail) (err error)
+	QueryJobDetailByEmbedding(ctx context.Context, beforeDate string, embedding []float32) (entities []entity.JobDetail, err error)
+	QueryNonNotifiedJobDetailByEmbedding(ctx context.Context, beforeDate string, embedding []float32) (entities []entity.JobDetail, err error)
+}
+
 // Fill with you ideas below.
-func CreateJobDetailIfNotExist(ctx context.Context, jobDetails []entity.JobDetail) error {
+func (d *jobDetailDao) CreateJobDetailIfNotExist(ctx context.Context, jobDetails []entity.JobDetail) error {
 	var allError []error
 	for _, jobDetail := range jobDetails {
 		var existEntity entity.JobDetail
@@ -65,43 +76,43 @@ func CreateJobDetailIfNotExist(ctx context.Context, jobDetails []entity.JobDetai
 	return errors.Join(allError...)
 }
 
-func GetJobDetailById(ctx context.Context, id string) (result entity.JobDetail, err error) {
+func (d *jobDetailDao) GetJobDetailById(ctx context.Context, id string) (result entity.JobDetail, err error) {
 	err = JobDetail.Ctx(ctx).Where("id = ?", id).Scan(&result)
 	return result, err
 }
 
-func GetLatestJobList(ctx context.Context, offset, limit int) (entities []entity.JobDetail, err error) {
+func (d *jobDetailDao) GetLatestJobList(ctx context.Context, offset, limit int) (entities []entity.JobDetail, err error) {
 
 	err = JobDetail.Ctx(ctx).Order("update_time desc").Limit(limit).Offset(offset).Scan(&entities)
 
 	return
 }
 
-func GetEmptyJobDescEmbeddingJobDetailTotalCount(ctx context.Context) (count int, err error) {
+func (d *jobDetailDao) GetEmptyJobDescEmbeddingJobDetailTotalCount(ctx context.Context) (count int, err error) {
 
 	count, err = JobDetail.Ctx(ctx).Where("job_desc_embedding is null").Count()
 
 	return
 }
 
-func GetEmptyJobDescEmbeddingJobList(ctx context.Context, offset, limit int) (entities []entity.JobDetail, err error) {
+func (d *jobDetailDao) GetEmptyJobDescEmbeddingJobList(ctx context.Context, offset, limit int) (entities []entity.JobDetail, err error) {
 
 	err = JobDetail.Ctx(ctx).Where("job_desc_embedding is null").Order("update_time desc").Limit(limit).Offset(offset).Scan(&entities)
 
 	return
 }
 
-func UpdateJobDetailEmbedding(ctx context.Context, entity entity.JobDetail) (err error) {
+func (d *jobDetailDao) UpdateJobDetailEmbedding(ctx context.Context, entity entity.JobDetail) (err error) {
 	_, err = JobDetail.Ctx(ctx).Data(g.Map{"job_desc_embedding": pgvector.NewVector(entity.JobDescEmbedding)}).Where("id = ?", entity.Id).Update()
 	return
 }
 
-func QueryJobDetailByEmbedding(ctx context.Context, beforeDate string, embedding []float32) (entities []entity.JobDetail, err error) {
+func (d *jobDetailDao) QueryJobDetailByEmbedding(ctx context.Context, beforeDate string, embedding []float32) (entities []entity.JobDetail, err error) {
 	err = JobDetail.Ctx(ctx).Raw("SELECT * FROM job_detail WHERE update_time > ? ORDER BY job_desc_embedding <-> ? LIMIT 30;", beforeDate, pgvector.NewVector(embedding)).Scan(&entities)
 	return
 }
 
-func QueryNonNotifiedJobDetailByEmbedding(ctx context.Context, beforeDate string, embedding []float32) (entities []entity.JobDetail, err error) {
+func (d *jobDetailDao) QueryNonNotifiedJobDetailByEmbedding(ctx context.Context, beforeDate string, embedding []float32) (entities []entity.JobDetail, err error) {
 	err = JobDetail.Ctx(ctx).Raw(
 		"SELECT jd.* FROM job_detail jd LEFT JOIN user_matched_job umj ON jd.id = umj.job_id WHERE umj.job_id is null AND jd.update_time > ? ORDER BY jd.job_desc_embedding <-> ? LIMIT 30;",
 		beforeDate,
