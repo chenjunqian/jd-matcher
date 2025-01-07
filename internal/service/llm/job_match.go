@@ -11,7 +11,7 @@ func (c *LLMClient) GenerateMatchJobByResumeResult(ctx context.Context, prompt s
 
 	result, err = llms.GenerateFromSinglePrompt(
 		ctx, 
-		llmClient.Client, 
+		openAIClient.Client, 
 		prompt,
 		llms.WithJSONMode(),
 	)

@@ -28,7 +28,7 @@ func TestGetJobMatchPromptTemplate(t *testing.T) {
 	InitOpenAIClient(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotPromptTemp, err := llmClient.GetJobMatchPromptTemplate(tt.args.ctx)
+			gotPromptTemp, err := openAIClient.GetJobMatchPromptTemplate(tt.args.ctx)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetJobMatchPromptTemplate() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -68,7 +68,7 @@ func TestGenerateResumeMatchPrompt(t *testing.T) {
 	InitOpenAIClient(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotPrompt := llmClient.GenerateResumeMatchPrompt(tt.args.ctx, tt.args.promptTemp, tt.args.resume, tt.args.expectation, tt.args.jobList)
+			gotPrompt := openAIClient.GenerateResumeMatchPrompt(tt.args.ctx, tt.args.promptTemp, tt.args.resume, tt.args.expectation, tt.args.jobList)
 			if gstr.Contains(gotPrompt, tt.args.resume) == false || gstr.Contains(gotPrompt, tt.args.expectation) == false || gstr.Contains(gotPrompt, tt.args.jobList) == false {
 				t.Errorf("GenerateResumeMatchPrompt() = %v, replace placeholder failed", gotPrompt)
 			}
