@@ -23,7 +23,6 @@ func StartFindMatchJobByResumeJob(ctx context.Context) {
 		finishTime := gtime.Now()
 		g.Log().Line().Infof(ctx, "query match job by resume job cost %s", finishTime.Sub(startTime).String())
 	}, "query_match_job_by_resume_job")
-	runFindMatchJobByResumeJob(ctx, &dao.UserInfo, &dao.UserMatchedJob, &dao.JobDetail, llm.GetClient())
 
 	if err != nil {
 		g.Log().Line().Error(ctx, "add query match job by resume job error :", err)

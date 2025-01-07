@@ -22,7 +22,6 @@ func StartNotifyUserMatchedJob(ctx context.Context) {
 		finishTime := gtime.Now()
 		g.Log().Line().Infof(ctx, "notify matched job cost %s", finishTime.Sub(startTime).String())
 	}, "notify_matched_job")
-	runNotifyUserMatchedJob(ctx, &dao.UserInfo, &dao.UserMatchedJob)
 
 	if err != nil {
 		g.Log().Line().Error(ctx, "add notify matched job error :", err)
