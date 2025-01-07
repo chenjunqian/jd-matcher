@@ -1,4 +1,5 @@
-CREATE EXTENSION vector;
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgroonga;
 
 CREATE TABLE job_detail (
     id varchar(64) NOT NULL,
