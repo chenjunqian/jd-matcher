@@ -29,7 +29,7 @@ func TestEmbeddingText(t *testing.T) {
 			if err != nil {
 				return
 			}
-			gotVector, err := llmClient.EmbeddingText(tt.args.ctx, tt.args.contents)
+			gotVector, err := openAIClient.EmbeddingText(tt.args.ctx, tt.args.contents)
 			if err != nil {
 				t.Log(err)
 				return

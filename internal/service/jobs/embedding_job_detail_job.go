@@ -69,7 +69,7 @@ func runEmbeddingJobDetailJob(ctx context.Context, jobDetailDao dao.IJobDetail) 
 
 func embeddingJobDetailAndStore(ctx context.Context, job entity.JobDetail, jobDetailDao dao.IJobDetail) (err error) {
 	contents := []string{job.JobDesc}
-	vector, err := llm.GetClient().EmbeddingText(ctx, contents)
+	vector, err := llm.GetOpenAIClient().EmbeddingText(ctx, contents)
 	if err != nil {
 		g.Log().Line().Error(ctx, "embedding job desc error : ", err)
 		return
