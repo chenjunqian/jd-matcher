@@ -147,7 +147,7 @@ func handleResumeFileUpload(ctx context.Context, b *bot.Bot, update *models.Upda
 }
 
 func getUploadResumeFIle(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
-	
+
 	if !gstr.HasPrefix(update.Message.Document.MimeType, "text/") {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -168,6 +168,17 @@ func getUploadResumeFIle(ctx context.Context, b *bot.Bot, update *models.Update,
 		})
 		return
 	}
+
+	// converResult, err := markitdown.Convert(receivedFile.FilePath, receivedFile.FilePath)
+	// if err != nil {
+	// 	g.Log().Line().Error(ctx, "convert file error : ", err)
+	// 	b.SendMessage(ctx, &bot.SendMessageParams{
+	// 		ChatID: update.Message.Chat.ID,
+	// 		Text:   "There is something wrong with my service. Please try again later.",
+	// 	})
+	// 	return
+	// }
+	// g.Log().Line().Debugf(ctx, "Convert file result: %s", converResult)
 
 	downloadLink := b.FileDownloadLink(receivedFile)
 	g.Log().Line().Debugf(ctx, "Get resume download link: %s", downloadLink)
