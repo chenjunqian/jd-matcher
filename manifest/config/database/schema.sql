@@ -1,5 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pgroonga;
+-- CREATE EXTENSION IF NOT EXISTS pgroonga;
 
 CREATE TABLE job_detail (
     id varchar(64) NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE job_detail (
     PRIMARY KEY (id)
 );
 
-CREATE INDEX pgroonga_idx_job_desc ON job_detail USING pgroonga ("job_desc");
+-- CREATE INDEX pgroonga_idx_job_desc ON job_detail USING pgroonga ("job_desc");
 
 ALTER TABLE job_detail ADD CONSTRAINT unique_link UNIQUE (link);
 
@@ -25,7 +25,7 @@ CREATE TABLE user_info (
     email varchar(64),
     telegram_id varchar(64),
     resume_embedding vector,
-    resume text,
+    resume text DEFAULT ''::text,
     job_expectations text,
     PRIMARY KEY (id)
 );
