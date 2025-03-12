@@ -70,7 +70,13 @@ func (dao *userInfoDao) GetUserInfoByTelegramId(ctx context.Context, telegramId 
 }
 
 func (dao *userInfoDao) IsUserHasUploadResume(ctx context.Context, telegramId string) (result bool, err error) {
-	result, err = UserInfo.Ctx(ctx).Where("telegram_id = ?", telegramId).Where("resume is not null").Exist()
+	var entityResult entity.UserInfo
+	err = UserInfo.Ctx(ctx).Where("telegram_id = ?", telegramId).Scan(&entityResult)
+	if entityResult.Resume == "" {
+		result = false
+	} else {
+		result = true
+	}
 	return
 }
 
