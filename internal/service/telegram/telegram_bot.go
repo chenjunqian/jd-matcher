@@ -60,9 +60,21 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	}
 
 	if messageType == models.MessageEntityTypeBotCommand {
+		AddMessage(update.Message.Chat.ID, ChatFromUser, CommandType, update.Message.Chat.ID, update.Message.Text)
 		handleCommandReply(ctx, b, update, update.Message.Text)
-	} else if update.Message != nil && update.Message.Document != nil {
-		handleResumeFileUpload(ctx, b, update)
+	} else {
+		latestBotMessage := GetLatestMessage(update.Message.Chat.ID, ChatFromBot)
+		// user upload resume
+		if update.Message != nil &&
+			update.Message.Document != nil &&
+			(latestBotMessage.Message == UPLOAD_RESUME_HINT || latestBotMessage.Message == RESUME_EXIST_REPLY) {
+			AddMessage(update.Message.Chat.ID, ChatFromUser, CommandType, update.Message.Chat.ID, "")
+			handleResumeFileUpload(ctx, b, update)
+			return
+		}
+
+		// default user text message
+		AddMessage(update.Message.Chat.ID, ChatFromUser, CommandType, update.Message.Chat.ID, update.Message.Text)
 	}
 
 }
