@@ -25,6 +25,10 @@ func getAllCommands() []models.BotCommand {
 			Description: "Get how to use this bot",
 		},
 		{
+			Command:     "all_jobs",
+			Description: "Get all available jobs",
+		},
+		{
 			Command:     "jobs",
 			Description: "Get all available jobs for you",
 		},
@@ -45,6 +49,9 @@ func handleCommandReply(ctx context.Context, b *bot.Bot, update *models.Update, 
 			ChatID: update.Message.Chat.ID,
 			Text:   "Use /upload_resume to upload your resume first.\nThen you can use /jobs to get all available jobs for you.",
 		})
+
+	case ALL_JOBS_COMMAND:
+		handleAllJobsCommand(ctx, b, update)
 
 	case JOBS_COMMAND:
 		handleJobsCommand(ctx, b, update, &dao.UserInfo)
@@ -86,6 +93,21 @@ func handleStartCommand(ctx context.Context, b *bot.Bot, update *models.Update, 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   replyMessage,
+	})
+}
+
+func handleAllJobsCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
+	replyMarkup, replyMessage, err := getAllJobsInlineKeyboard(ctx, update)
+	if err != nil {
+		g.Log().Line().Error(ctx, "build all jobs inline keyboard error : ", err)
+		return
+	}
+
+	AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, replyMessage)
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      update.Message.Chat.ID,
+		Text:        replyMessage,
+		ReplyMarkup: replyMarkup,
 	})
 }
 

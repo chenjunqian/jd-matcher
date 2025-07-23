@@ -13,6 +13,8 @@ const (
 
 	JOBS_COMMAND = "/jobs"
 
+	ALL_JOBS_COMMAND = "/all_jobs"
+
 	UPLOAD_RESUME_COMMAND = "/upload_resume"
 	UPLOAD_RESUME_SUCCESS_REPLY = "Your resume has been uploaded! We will notify you when we find a job for you. You can also use /jobs to view all available jobs for you."
 	UPLOAD_RESUME_HINT = "Please upload your resume file."
