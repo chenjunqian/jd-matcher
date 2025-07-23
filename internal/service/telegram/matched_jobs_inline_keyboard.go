@@ -35,11 +35,12 @@ func buildMatchedJobListInlineKeyboard(ctx context.Context, userId string, updat
 			}
 		}
 
-		if update.CallbackQuery.Data == MATCHED_JOBS_PRE_PAGE_DATA {
+		switch update.CallbackQuery.Data {
+		case MATCHED_JOBS_PRE_PAGE_DATA:
 			if currentPage >= 1 {
 				currentPage = currentPage - 1
 			}
-		} else if update.CallbackQuery.Data == MATCHED_JOBS_NEXT_PAGE_DATA {
+		case MATCHED_JOBS_NEXT_PAGE_DATA:
 			currentPage = currentPage + 1
 		}
 	}

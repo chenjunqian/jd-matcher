@@ -81,6 +81,11 @@ func (d *jobDetailDao) GetJobDetailById(ctx context.Context, id string) (result 
 	return result, err
 }
 
+func (d *jobDetailDao) GetTotalJobCount(ctx context.Context) (count int, err error) {
+	count, err = JobDetail.Ctx(ctx).Count()
+	return
+}
+
 func (d *jobDetailDao) GetLatestJobList(ctx context.Context, offset, limit int) (entities []entity.JobDetail, err error) {
 
 	err = JobDetail.Ctx(ctx).Order("update_time desc").Limit(limit).Offset(offset).Scan(&entities)
