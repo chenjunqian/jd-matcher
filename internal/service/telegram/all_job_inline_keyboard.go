@@ -12,10 +12,10 @@ import (
 )
 
 var ALL_JOBS_CALLBACK_DATA_PREFIX = "all_jobs_callback_data_"
-var ALL_JOBS_CURRENT_PAGE_DATA = MATCHED_JOBS_CALLBACK_DATA_PREFIX + "current_page_"
-var ALL_JOBS_TOTAL_PAGE_DATA = MATCHED_JOBS_CALLBACK_DATA_PREFIX + "total_page_"
-var ALL_JOBS_NEXT_PAGE_DATA = MATCHED_JOBS_CALLBACK_DATA_PREFIX + "next_page"
-var ALL_JOBS_PRE_PAGE_DATA = MATCHED_JOBS_CALLBACK_DATA_PREFIX + "pre_page"
+var ALL_JOBS_CURRENT_PAGE_DATA = ALL_JOBS_CALLBACK_DATA_PREFIX + "current_page_"
+var ALL_JOBS_TOTAL_PAGE_DATA = ALL_JOBS_CALLBACK_DATA_PREFIX + "total_page_"
+var ALL_JOBS_NEXT_PAGE_DATA = ALL_JOBS_CALLBACK_DATA_PREFIX + "next_page"
+var ALL_JOBS_PRE_PAGE_DATA = ALL_JOBS_CALLBACK_DATA_PREFIX + "pre_page"
 
 func getAllJobsInlineKeyboard(ctx context.Context, update *models.Update) (replyMarkup models.ReplyMarkup, replyMessage string, err error) {
 	return buildAllJobsInlineKeyboard(ctx, update)
@@ -28,19 +28,19 @@ func buildAllJobsInlineKeyboard(ctx context.Context, update *models.Update) (rep
 	if update.CallbackQuery != nil {
 		updateReplyMarkup := update.CallbackQuery.Message.Message.ReplyMarkup
 		for _, inlineKeyboard := range updateReplyMarkup.InlineKeyboard {
-			if gstr.HasPrefix(inlineKeyboard[0].CallbackData, MATCHED_JOBS_CURRENT_PAGE_DATA) {
-				currentPageStr := gstr.TrimLeftStr(inlineKeyboard[0].CallbackData, MATCHED_JOBS_CURRENT_PAGE_DATA)
+			if gstr.HasPrefix(inlineKeyboard[0].CallbackData, ALL_JOBS_CURRENT_PAGE_DATA) {
+				currentPageStr := gstr.TrimLeftStr(inlineKeyboard[0].CallbackData, ALL_JOBS_CURRENT_PAGE_DATA)
 				currentPage = gconv.Int(currentPageStr)
 				break
 			}
 		}
 
 		switch update.CallbackQuery.Data {
-		case MATCHED_JOBS_PRE_PAGE_DATA:
+		case ALL_JOBS_PRE_PAGE_DATA:
 			if currentPage >= 1 {
 				currentPage = currentPage - 1
 			}
-		case MATCHED_JOBS_NEXT_PAGE_DATA:
+		case ALL_JOBS_NEXT_PAGE_DATA:
 			currentPage = currentPage + 1
 		}
 	}
