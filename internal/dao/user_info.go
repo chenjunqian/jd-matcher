@@ -35,6 +35,7 @@ type IUserInfo interface {
 	GetUserInfoByTelegramId(ctx context.Context, telegramId string) (result entity.UserInfo, err error)
 	IsUserHasUploadResume(ctx context.Context, telegramId string) (result bool, err error)
 	UpdateUserResume(ctx context.Context, telegramId string, resume string, resumeEmbedding []float32) (err error)
+	UpdateUserJobExpectations(ctx context.Context, telegramId string, expectations string) (err error)
 	GetAllUserInfoCount(ctx context.Context) (count int, err error)
 	GetUserInfoList(ctx context.Context, offset, limit int) (result []entity.UserInfo, err error)
 	GetEmptyResumeUserInfoCount(ctx context.Context) (count int, err error)
@@ -82,6 +83,11 @@ func (dao *userInfoDao) IsUserHasUploadResume(ctx context.Context, telegramId st
 
 func (dao *userInfoDao) UpdateUserResume(ctx context.Context, telegramId string, resume string, resumeEmbedding []float32) (err error) {
 	_, err = UserInfo.Ctx(ctx).Data(g.Map{"resume": resume, "resume_embedding": pgvector.NewVector(resumeEmbedding)}).Where("telegram_id = ?", telegramId).Update()
+	return
+}
+
+func (dao *userInfoDao) UpdateUserJobExpectations(ctx context.Context, telegramId string, expectations string) (err error) {
+	_, err = UserInfo.Ctx(ctx).Data(g.Map{"job_expectations": expectations}).Where("telegram_id = ?", telegramId).Update()
 	return
 }
 

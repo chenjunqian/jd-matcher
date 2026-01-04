@@ -36,6 +36,10 @@ func getAllCommands() []models.BotCommand {
 			Command:     "upload_resume",
 			Description: "Upload your resume",
 		},
+		{
+			Command:     "expectation",
+			Description: EXPECTATION_DESCRIPTION,
+		},
 	}
 }
 
@@ -57,6 +61,8 @@ func handleCommandReply(ctx context.Context, b *bot.Bot, update *models.Update, 
 		handleJobsCommand(ctx, b, update, &dao.UserInfo)
 	case UPLOAD_RESUME_COMMAND:
 		handleUploadResumeCommand(ctx, b, update, &dao.UserInfo)
+	case EXPECTATION_COMMAND:
+		handleExpectationCommand(ctx, b, update, &dao.UserInfo)
 	}
 }
 
@@ -167,6 +173,63 @@ func handleUploadResumeCommand(ctx context.Context, b *bot.Bot, update *models.U
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   UPLOAD_RESUME_HINT,
+	})
+}
+
+func handleExpectationCommand(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
+	userInfo, err := userInfoDao.GetUserInfoByTelegramId(ctx, gconv.String(update.Message.From.ID))
+	if err != nil {
+		g.Log().Line().Error(ctx, "get user info error : ", err)
+		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, COMMON_ERROR_REPLY)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   COMMON_ERROR_REPLY,
+		})
+		return
+	} else if userInfo.Id == "" {
+		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, LOGIN_HINT)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   LOGIN_HINT,
+		})
+		return
+	}
+
+	var replyMessage string
+	if userInfo.JobExpectations != "" {
+		replyMessage = fmt.Sprintf(EXPECTATION_HINT_EXISTS, userInfo.JobExpectations)
+	} else {
+		replyMessage = EXPECTATION_HINT_EMPTY
+	}
+
+	AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, replyMessage)
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   replyMessage,
+	})
+}
+
+func handleExpectationTextInput(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
+	userInput := update.Message.Text
+	if userInput == "" {
+		return
+	}
+
+	err := userInfoDao.UpdateUserJobExpectations(ctx, gconv.String(update.Message.From.ID), userInput)
+	if err != nil {
+		g.Log().Line().Error(ctx, "update user job expectations error : ", err)
+		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, COMMON_ERROR_REPLY)
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   COMMON_ERROR_REPLY,
+		})
+		return
+	}
+
+	AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, EXPECTATION_SUCCESS_REPLY)
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   EXPECTATION_SUCCESS_REPLY,
 	})
 }
 

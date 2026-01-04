@@ -158,3 +158,17 @@ func (mr *MockIUserInfoMockRecorder) UpdateUserResume(ctx, telegramId, resume, r
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserResume", reflect.TypeOf((*MockIUserInfo)(nil).UpdateUserResume), ctx, telegramId, resume, resumeEmbedding)
 }
+
+// UpdateUserJobExpectations mocks base method.
+func (m *MockIUserInfo) UpdateUserJobExpectations(ctx context.Context, telegramId, expectations string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserJobExpectations", ctx, telegramId, expectations)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateUserJobExpectations indicates an expected call of UpdateUserJobExpectations.
+func (mr *MockIUserInfoMockRecorder) UpdateUserJobExpectations(ctx, telegramId, expectations any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserJobExpectations", reflect.TypeOf((*MockIUserInfo)(nil).UpdateUserJobExpectations), ctx, telegramId, expectations)
+}

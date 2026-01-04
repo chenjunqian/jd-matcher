@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"jd-matcher/internal/dao"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -37,8 +38,6 @@ func InitTelegramBot(ctx context.Context) {
 		closeTelegramBot(ctx, telegramBot)
 	}()
 
-	g.Log().Line().Info(ctx, "Closing telegram bot before launching")
-	closeTelegramBot(ctx, telegramBot)
 	g.Log().Line().Info(ctx, "Launch telegram bot")
 	go telegramBot.Start(ctx)
 
@@ -74,6 +73,15 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			return
 		}
 
+		// user input expectation
+		if update.Message != nil &&
+			update.Message.Text != "" &&
+			(latestBotMessage.Message == EXPECTATION_HINT_EMPTY || isExpectationHintExists(latestBotMessage.Message)) {
+			AddMessage(update.Message.Chat.ID, ChatFromUser, CommandType, update.Message.Chat.ID, update.Message.Text)
+			handleExpectationTextInput(ctx, b, update, &dao.UserInfo)
+			return
+		}
+
 		// default user text message
 		AddMessage(update.Message.Chat.ID, ChatFromUser, CommandType, update.Message.Chat.ID, update.Message.Text)
 	}
@@ -82,4 +90,10 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 func GetTelegramBot() *bot.Bot {
 	return telegramBot
+}
+
+// isExpectationHintExists checks if the message is an expectation hint that was shown to existing users
+// It checks if the message starts with "Your current expectations:"
+func isExpectationHintExists(message string) bool {
+	return len(message) >= 23 && message[:23] == "Your current expectations:"
 }

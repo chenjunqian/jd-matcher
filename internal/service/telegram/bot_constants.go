@@ -20,4 +20,10 @@ const (
 	UPLOAD_RESUME_HINT = "Please upload your resume file."
 	UPLOAD_RESUME_TYPE_ERROR = "Please upload your resume with text file."
 	RESUME_EXIST_REPLY = "You have already uploaded your resume. If you want to update your resume, please upload it again."
+
+	EXPECTATION_COMMAND = "/expectation"
+	EXPECTATION_DESCRIPTION = "Set your job expectations (location, salary, language, work setup)"
+	EXPECTATION_HINT_EMPTY = "Please enter your job expectations. This will help us find better matching jobs for you. For example: 'Remote, Shanghai, Python, English'"
+	EXPECTATION_HINT_EXISTS = "Your current expectations: %s\nPlease enter your new expectations. This will OVERWRITE your previous expectations."
+	EXPECTATION_SUCCESS_REPLY = "Your job expectations have been saved!"
 )
