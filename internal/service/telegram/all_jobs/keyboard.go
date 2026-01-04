@@ -1,4 +1,4 @@
-package telegram
+package all_jobs
 
 import (
 	"context"
@@ -11,36 +11,33 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
-var ALL_JOBS_CALLBACK_DATA_PREFIX = "all_jobs_callback_data_"
-var ALL_JOBS_CURRENT_PAGE_DATA = ALL_JOBS_CALLBACK_DATA_PREFIX + "current_page_"
-var ALL_JOBS_TOTAL_PAGE_DATA = ALL_JOBS_CALLBACK_DATA_PREFIX + "total_page_"
-var ALL_JOBS_NEXT_PAGE_DATA = ALL_JOBS_CALLBACK_DATA_PREFIX + "next_page"
-var ALL_JOBS_PRE_PAGE_DATA = ALL_JOBS_CALLBACK_DATA_PREFIX + "pre_page"
+const (
+	CallbackDataPrefix   = "all_jobs_callback_data_"
+	CurrentPageData      = CallbackDataPrefix + "current_page_"
+	TotalPageData        = CallbackDataPrefix + "total_page_"
+	NextPageData         = CallbackDataPrefix + "next_page"
+	PrePageData          = CallbackDataPrefix + "pre_page"
+)
 
-func getAllJobsInlineKeyboard(ctx context.Context, update *models.Update) (replyMarkup models.ReplyMarkup, replyMessage string, err error) {
-	return buildAllJobsInlineKeyboard(ctx, update)
-}
-
-func buildAllJobsInlineKeyboard(ctx context.Context, update *models.Update) (replyMarkup models.ReplyMarkup, replyMessage string, err error) {
-
+func BuildKeyboard(ctx context.Context, update *models.Update) (replyMarkup models.ReplyMarkup, replyMessage string, err error) {
 	var currentPage int = 0
 	// event from callback button, update inline keyboard
 	if update.CallbackQuery != nil {
 		updateReplyMarkup := update.CallbackQuery.Message.Message.ReplyMarkup
 		for _, inlineKeyboard := range updateReplyMarkup.InlineKeyboard {
-			if gstr.HasPrefix(inlineKeyboard[0].CallbackData, ALL_JOBS_CURRENT_PAGE_DATA) {
-				currentPageStr := gstr.TrimLeftStr(inlineKeyboard[0].CallbackData, ALL_JOBS_CURRENT_PAGE_DATA)
+			if gstr.HasPrefix(inlineKeyboard[0].CallbackData, CurrentPageData) {
+				currentPageStr := gstr.TrimLeftStr(inlineKeyboard[0].CallbackData, CurrentPageData)
 				currentPage = gconv.Int(currentPageStr)
 				break
 			}
 		}
 
 		switch update.CallbackQuery.Data {
-		case ALL_JOBS_PRE_PAGE_DATA:
+		case PrePageData:
 			if currentPage >= 1 {
 				currentPage = currentPage - 1
 			}
-		case ALL_JOBS_NEXT_PAGE_DATA:
+		case NextPageData:
 			currentPage = currentPage + 1
 		}
 	}
@@ -73,17 +70,24 @@ func buildAllJobsInlineKeyboard(ctx context.Context, update *models.Update) (rep
 	replyMarkup = &models.InlineKeyboardMarkup{
 		InlineKeyboard: [][]models.InlineKeyboardButton{
 			{
-				{Text: "Current Page " + gconv.String(currentPage+1), CallbackData: ALL_JOBS_CURRENT_PAGE_DATA + gconv.String(currentPage)},
+				{Text: "Current Page " + gconv.String(currentPage+1), CallbackData: CurrentPageData + gconv.String(currentPage)},
 			},
 			{
-				{Text: "Total Page " + gconv.String(totalPage), CallbackData: ALL_JOBS_TOTAL_PAGE_DATA + gconv.String(totalPage)},
+				{Text: "Total Page " + gconv.String(totalPage), CallbackData: TotalPageData + gconv.String(totalPage)},
 			},
 			{
-				{Text: "Pre Page", CallbackData: ALL_JOBS_PRE_PAGE_DATA},
-				{Text: "Next Page", CallbackData: ALL_JOBS_NEXT_PAGE_DATA},
+				{Text: "Pre Page", CallbackData: PrePageData},
+				{Text: "Next Page", CallbackData: NextPageData},
 			},
 		},
 	}
 
 	return
+}
+
+func calculateTotalPages(totalCount, pageSize int) int {
+	if totalCount%pageSize == 0 {
+		return totalCount / pageSize
+	}
+	return (totalCount / pageSize) + 1
 }
