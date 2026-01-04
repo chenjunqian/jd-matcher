@@ -7,6 +7,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/text/gstr"
 	"github.com/gogf/gf/v2/util/gconv"
 )
 
@@ -77,6 +78,8 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		if update.Message != nil &&
 			update.Message.Text != "" &&
 			(latestBotMessage.Message == EXPECTATION_HINT_EMPTY || isExpectationHintExists(latestBotMessage.Message)) {
+
+			g.Log().Line().Debugf(ctx, "this is expectation update message: %v", gconv.String(update))
 			AddMessage(update.Message.Chat.ID, ChatFromUser, CommandType, update.Message.Chat.ID, update.Message.Text)
 			handleExpectationTextInput(ctx, b, update, &dao.UserInfo)
 			return
@@ -95,5 +98,7 @@ func GetTelegramBot() *bot.Bot {
 // isExpectationHintExists checks if the message is an expectation hint that was shown to existing users
 // It checks if the message starts with "Your current expectations:"
 func isExpectationHintExists(message string) bool {
-	return len(message) >= 23 && message[:23] == "Your current expectations:"
+	isExpectationReply := gstr.HasPrefix(message, "Your current expectations:")
+
+	return isExpectationReply
 }
