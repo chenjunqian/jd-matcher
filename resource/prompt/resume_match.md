@@ -4,7 +4,7 @@
 
 ### If Expectations Are Provided:
 The candidate's expectations are **MANDATORY requirements**. Jobs that do NOT meet these expectations must be:
-- Assigned matchScore: "0%"
+- Assigned matchScore: "0"
 - **EXCLUDED from the output entirely**
 
 ### If Expectations Are Empty/Null:
@@ -26,14 +26,14 @@ Follow these steps:
 3. **Match Resume to Job Descriptions:**
    - **If expectations exist**: First FILTER out jobs that don't meet ANY expectation (location, salary, language, work setup, job title, etc.)
    - **Then**, score only the remaining jobs based on skills and experience alignment
-   - Assign a compatibility score (percentage) for each job
+   - Assign a compatibility score (0 to 10) for each job based on how well it aligns with the candidate's profile.
 
 4. **Expectation Checklist (for filtering - only if expectations are provided):**
    | Expectation | Job's Value | Match? |
    |-------------|-------------|--------|
    | {{ expectations }} | | |
 
-   If ANY expectation does not match, the job must be filtered out (0% matchScore).
+   If ANY expectation does not match, the job must be filtered out (0 matchScore).
 
 5. **Provide Recommendations:**
    - Output only jobs that passed the expectation filter
