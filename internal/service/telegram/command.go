@@ -2,16 +2,16 @@ package telegram
 
 import (
 	"context"
-	"fmt"
 	"jd-matcher/internal/dao"
-	"jd-matcher/internal/model/entity"
-	"jd-matcher/internal/service/llm"
+	"jd-matcher/internal/service/telegram/all_jobs"
+	"jd-matcher/internal/service/telegram/expectation"
+	"jd-matcher/internal/service/telegram/help"
+	"jd-matcher/internal/service/telegram/jobs"
+	"jd-matcher/internal/service/telegram/start"
+	"jd-matcher/internal/service/telegram/upload_resume"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/gogf/gf/v2/frame/g"
-	"github.com/gogf/gf/v2/text/gstr"
-	"github.com/gogf/gf/v2/util/gconv"
 )
 
 func getAllCommands() []models.BotCommand {
@@ -44,276 +44,28 @@ func getAllCommands() []models.BotCommand {
 }
 
 func handleCommandReply(ctx context.Context, b *bot.Bot, update *models.Update, command string) {
-
 	switch command {
 	case START_COMMAND:
-		handleStartCommand(ctx, b, update, &dao.UserInfo)
+		start.Handle(ctx, b, update, &dao.UserInfo)
 	case HELP_COMMAND:
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Use /upload_resume to upload your resume first.\nThen you can use /jobs to get all available jobs for you.",
-		})
-
+		help.Handle(ctx, b, update)
 	case ALL_JOBS_COMMAND:
-		handleAllJobsCommand(ctx, b, update)
-
+		all_jobs.Handle(ctx, b, update)
 	case JOBS_COMMAND:
-		handleJobsCommand(ctx, b, update, &dao.UserInfo)
+		jobs.Handle(ctx, b, update, &dao.UserInfo)
 	case UPLOAD_RESUME_COMMAND:
-		handleUploadResumeCommand(ctx, b, update, &dao.UserInfo)
+		upload_resume.Handle(ctx, b, update, &dao.UserInfo)
 	case EXPECTATION_COMMAND:
-		handleExpectationCommand(ctx, b, update, &dao.UserInfo)
+		expectation.Handle(ctx, b, update, &dao.UserInfo)
 	}
 }
 
-func handleStartCommand(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
-	userTelegramId := update.Message.From.ID
-	userName := update.Message.From.LastName + " " + update.Message.From.FirstName
-	userInfoEntity, err := userInfoDao.GetUserInfoByTelegramId(ctx, gconv.String(userTelegramId))
-
-	var replyMessage string
-	var errorMessage = fmt.Sprintf(START_COMMAND_ERROR_REPLY, userName)
-	var greetingMessage = fmt.Sprintf(START_COMMAND_REPLY, userName)
-	if err != nil {
-		g.Log().Line().Error(ctx, "get user info error : ", err)
-		replyMessage = errorMessage
-	}
-
-	if userInfoEntity.Id == "" {
-		userInfoEntity = entity.UserInfo{
-			TelegramId: gconv.String(userTelegramId),
-			Name:       userName,
-		}
-		err = userInfoDao.CreateUserInfoIfNotExist(ctx, userInfoEntity)
-		if err != nil {
-			g.Log().Line().Error(ctx, "create user info error : ", err)
-			replyMessage = errorMessage
-		} else {
-			replyMessage = greetingMessage
-		}
-	} else {
-		replyMessage = greetingMessage
-	}
-
-	AddMessage(userTelegramId, ChatFromBot, CommandType, 0, replyMessage)
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   replyMessage,
-	})
-}
-
-func handleAllJobsCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
-	replyMarkup, replyMessage, err := getAllJobsInlineKeyboard(ctx, update)
-	if err != nil {
-		g.Log().Line().Error(ctx, "build all jobs inline keyboard error : ", err)
-		return
-	}
-
-	AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, replyMessage)
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      update.Message.Chat.ID,
-		Text:        replyMessage,
-		ReplyMarkup: replyMarkup,
-	})
-}
-
-func handleJobsCommand(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
-	userInfo, err := userInfoDao.GetUserInfoByTelegramId(ctx, gconv.String(update.Message.From.ID))
-	if err != nil {
-		g.Log().Line().Error(ctx, "get user info error : ", err)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   LOGIN_HINT,
-		})
-		return
-	} else if userInfo.Id == "" {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   LOGIN_HINT,
-		})
-		return
-	}
-	replyMarkup, replyMessage, err := getMatchedJobListInlineKeyboard(ctx, userInfo.Id, update)
-	if err != nil {
-		g.Log().Line().Error(ctx, "build matched job list inline keyboard error : ", err)
-		return
-	}
-
-	AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, replyMessage)
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      update.Message.Chat.ID,
-		Text:        replyMessage,
-		ReplyMarkup: replyMarkup,
-	})
-}
-
-func handleUploadResumeCommand(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
-
-	isResumeExist, err := userInfoDao.IsUserHasUploadResume(ctx, gconv.String(update.Message.From.ID))
-	if err != nil {
-		g.Log().Line().Error(ctx, "check user resume exist error : ", err)
-		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, COMMON_ERROR_REPLY)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   COMMON_ERROR_REPLY,
-		})
-		return
-	}
-
-	if isResumeExist {
-		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, RESUME_EXIST_REPLY)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   RESUME_EXIST_REPLY,
-		})
-		return
-	}
-
-	AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, UPLOAD_RESUME_HINT)
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   UPLOAD_RESUME_HINT,
-	})
-}
-
-func handleExpectationCommand(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
-	userInfo, err := userInfoDao.GetUserInfoByTelegramId(ctx, gconv.String(update.Message.From.ID))
-	if err != nil {
-		g.Log().Line().Error(ctx, "get user info error : ", err)
-		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, COMMON_ERROR_REPLY)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   COMMON_ERROR_REPLY,
-		})
-		return
-	} else if userInfo.Id == "" {
-		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, LOGIN_HINT)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   LOGIN_HINT,
-		})
-		return
-	}
-
-	var replyMessage string
-	if userInfo.JobExpectations != "" {
-		replyMessage = fmt.Sprintf(EXPECTATION_HINT_EXISTS, userInfo.JobExpectations)
-	} else {
-		replyMessage = EXPECTATION_HINT_EMPTY
-	}
-
-	AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, replyMessage)
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   replyMessage,
-	})
-}
-
-func handleExpectationTextInput(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
-	userInput := update.Message.Text
-	if userInput == "" {
-		return
-	}
-
-	err := userInfoDao.UpdateUserJobExpectations(ctx, gconv.String(update.Message.From.ID), userInput)
-	if err != nil {
-		g.Log().Line().Error(ctx, "update user job expectations error : ", err)
-		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, COMMON_ERROR_REPLY)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   COMMON_ERROR_REPLY,
-		})
-		return
-	}
-
-	AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, EXPECTATION_SUCCESS_REPLY)
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   EXPECTATION_SUCCESS_REPLY,
-	})
-}
-
+// handleResumeFileUpload handles resume file upload
 func handleResumeFileUpload(ctx context.Context, b *bot.Bot, update *models.Update) {
-	getUploadResumeFIle(ctx, b, update, &dao.UserInfo)
+	upload_resume.HandleFileUpload(ctx, b, update, &dao.UserInfo)
 }
 
-func getUploadResumeFIle(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
-
-	if !gstr.HasPrefix(update.Message.Document.MimeType, "text/") {
-		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, UPLOAD_RESUME_TYPE_ERROR)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   UPLOAD_RESUME_TYPE_ERROR,
-		})
-		return
-	}
-
-	receivedFile, err := b.GetFile(ctx, &bot.GetFileParams{
-		FileID: update.Message.Document.FileID,
-	})
-
-	if err != nil {
-		g.Log().Line().Error(ctx, "get file error : ", err)
-		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, COMMON_ERROR_REPLY)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   COMMON_ERROR_REPLY,
-		})
-		return
-	}
-
-	// converResult, err := markitdown.Convert(receivedFile.FilePath, receivedFile.FilePath)
-	// if err != nil {
-	// 	g.Log().Line().Error(ctx, "convert file error : ", err)
-	// 	b.SendMessage(ctx, &bot.SendMessageParams{
-	// 		ChatID: update.Message.Chat.ID,
-	// 		Text:   "There is something wrong with my service. Please try again later.",
-	// 	})
-	// 	return
-	// }
-	// g.Log().Line().Debugf(ctx, "Convert file result: %s", converResult)
-
-	downloadLink := b.FileDownloadLink(receivedFile)
-	g.Log().Line().Debugf(ctx, "Get resume download link: %s", downloadLink)
-
-	if resp, err := g.Client().Get(ctx, downloadLink); err != nil {
-		g.Log().Line().Error(ctx, "Get resume file failed : ", err)
-		AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, COMMON_ERROR_REPLY)
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   COMMON_ERROR_REPLY,
-		})
-		return
-	} else {
-		defer resp.Close()
-		resumeContent := resp.ReadAllString()
-		g.Log().Line().Debugf(ctx, "Get resume content: %s", resumeContent)
-		if resumeContent != "" {
-			vector, err := llm.GetOpenAIClient().EmbeddingText(ctx, []string{resumeContent})
-			if err != nil {
-				g.Log().Line().Error(ctx, "embedding resume error : ", err)
-				AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, COMMON_ERROR_REPLY)
-				b.SendMessage(ctx, &bot.SendMessageParams{
-					ChatID: update.Message.Chat.ID,
-					Text:   COMMON_ERROR_REPLY,
-				})
-				return
-			}
-			err = userInfoDao.UpdateUserResume(ctx, gconv.String(update.Message.From.ID), resumeContent, vector[0])
-			if err != nil {
-				g.Log().Line().Error(ctx, "update user resume error : ", err)
-				AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, COMMON_ERROR_REPLY)
-				b.SendMessage(ctx, &bot.SendMessageParams{
-					ChatID: update.Message.Chat.ID,
-					Text:   COMMON_ERROR_REPLY,
-				})
-				return
-			}
-			AddMessage(update.Message.Chat.ID, ChatFromBot, CommandType, 0, UPLOAD_RESUME_SUCCESS_REPLY)
-			b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text:   UPLOAD_RESUME_SUCCESS_REPLY,
-			})
-		}
-	}
+// handleExpectationTextInput handles expectation text input
+func handleExpectationTextInput(ctx context.Context, b *bot.Bot, update *models.Update, userInfoDao dao.IUserInfo) {
+	expectation.HandleTextInput(ctx, b, update, userInfoDao)
 }

@@ -3,6 +3,9 @@ package telegram
 import (
 	"context"
 	"jd-matcher/internal/dao"
+	"jd-matcher/internal/service/telegram/all_jobs"
+	"jd-matcher/internal/service/telegram/jobs"
+	"jd-matcher/internal/service/telegram/upload_resume"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -18,9 +21,13 @@ func InitTelegramBot(ctx context.Context) {
 	botToken := g.Cfg().MustGetWithEnv(ctx, "telegram.bot.token").String()
 	opts := []bot.Option{
 		bot.WithDefaultHandler(defaultHandler),
-		bot.WithCallbackQueryDataHandler(MATCHED_JOBS_CALLBACK_DATA_PREFIX, bot.MatchTypePrefix, matchedJobsCallbackHandler),
-		bot.WithCallbackQueryDataHandler(ALL_JOBS_CALLBACK_DATA_PREFIX, bot.MatchTypePrefix, allJobsCallbackHandler),
 	}
+
+	// Register callback handlers from sub-modules
+	opts = append(opts,
+		bot.WithCallbackQueryDataHandler(all_jobs.CallbackDataPrefix, bot.MatchTypePrefix, all_jobs.CallbackHandler),
+		bot.WithCallbackQueryDataHandler(jobs.CallbackDataPrefix, bot.MatchTypePrefix, jobs.CallbackHandler),
+	)
 
 	var err error
 	telegramBot, err = bot.New(botToken, opts...)
@@ -68,7 +75,7 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		// user upload resume
 		if update.Message != nil &&
 			update.Message.Document != nil &&
-			(latestBotMessage.Message == UPLOAD_RESUME_HINT || latestBotMessage.Message == RESUME_EXIST_REPLY) {
+			(latestBotMessage.Message == upload_resume.UploadResumeHint || latestBotMessage.Message == upload_resume.ResumeExistReply) {
 			AddMessage(update.Message.Chat.ID, ChatFromUser, CommandType, update.Message.Chat.ID, "")
 			handleResumeFileUpload(ctx, b, update)
 			return
