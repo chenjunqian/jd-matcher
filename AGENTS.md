@@ -16,7 +16,7 @@ JD Matcher is an intelligent job matching tool built with the GoFrame framework,
 
 ## Project Architecture
 
-```
+```txt
 jd-matcher/
 ├── internal/
 │   ├── cmd/           # Command line entry and server startup
@@ -253,7 +253,7 @@ Main tables:
 ## Telegram Bot Commands
 
 | Command | Description |
-|---------|-------------|
+| --------- | ------------- |
 | `/start` | Start the bot, begin your job search journey |
 | `/help` | Get bot usage help |
 | `/all_jobs` | Get all available jobs |
