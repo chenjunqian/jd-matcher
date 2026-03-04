@@ -12,7 +12,7 @@ type LLMClient struct {
 	Client *openai.LLM
 }
 
-var openAIClient *LLMClient
+var openRouterClient *LLMClient
 var deepseekClient *LLMClient
 
 type ILLMClient interface {
@@ -22,16 +22,16 @@ type ILLMClient interface {
 	GenerateResumeMatchPrompt(ctx context.Context, promptTemp, resume, expectation, jobList string) (prompt string)
 }
 
-func InitOpenAIClient(ctx context.Context) error {
-	g.Log().Line().Info(ctx, "init openai client")
-	model := g.Cfg().MustGetWithEnv(ctx, "llm.openai.model").String()
-	baseUrl := g.Cfg().MustGetWithEnv(ctx, "llm.openai.baseUrl").String()
-	token := g.Cfg().MustGetWithEnv(ctx, "llm.openai.apiKey").String()
-	embeddingModel := g.Cfg().MustGetWithEnv(ctx, "llm.openai.embeddingModel").String()
+func InitOpenRouterClient(ctx context.Context) error {
+	g.Log().Line().Info(ctx, "init openrouter client")
+	model := g.Cfg().MustGetWithEnv(ctx, "llm.openrouter.model").String()
+	baseUrl := g.Cfg().MustGetWithEnv(ctx, "llm.openrouter.baseUrl").String()
+	token := g.Cfg().MustGetWithEnv(ctx, "llm.openrouter.apiKey").String()
+	embeddingModel := g.Cfg().MustGetWithEnv(ctx, "llm.openrouter.embeddingModel").String()
 
 	if model == "" || baseUrl == "" || token == "" {
 		g.Log().Line().Fatalf(ctx, "model:%s, baseUrl:%s, token:%s", model, baseUrl, token)
-		return errors.New("model or baseUrl or token is empty for openai client")
+		return errors.New("model or baseUrl or token is empty for openrouter client")
 	}
 
 	opts := []openai.Option{
@@ -42,8 +42,8 @@ func InitOpenAIClient(ctx context.Context) error {
 	}
 
 	var err error
-	openAIClient = new(LLMClient)
-	openAIClient.Client, err = openai.New(opts...)
+	openRouterClient = new(LLMClient)
+	openRouterClient.Client, err = openai.New(opts...)
 	if err != nil {
 		g.Log().Fatal(ctx, err)
 	}
@@ -82,6 +82,6 @@ func GetDeepSeekClient() *LLMClient {
 	return deepseekClient
 }
 
-func GetOpenAIClient() *LLMClient {
-	return openAIClient
+func GetOpenRouterClient() *LLMClient {
+	return openRouterClient
 }
