@@ -25,11 +25,11 @@ func TestEmbeddingText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := InitOpenAIClient(tt.args.ctx)
+			err := InitOpenRouterClient(tt.args.ctx)
 			if err != nil {
 				return
 			}
-			gotVector, err := openAIClient.EmbeddingText(tt.args.ctx, tt.args.contents)
+			gotVector, err := openRouterClient.EmbeddingText(tt.args.ctx, tt.args.contents)
 			if err != nil {
 				t.Log(err)
 				return

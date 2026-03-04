@@ -25,7 +25,7 @@ func TestGetJobMatchPromptTemplate(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	InitOpenAIClient(context.Background())
+	InitOpenRouterClient(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotPromptTemp, err := deepseekClient.GetJobMatchPromptTemplate(tt.args.ctx)
@@ -65,7 +65,7 @@ func TestGenerateResumeMatchPrompt(t *testing.T) {
 			},
 		},
 	}
-	InitOpenAIClient(context.Background())
+	InitOpenRouterClient(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotPrompt := deepseekClient.GenerateResumeMatchPrompt(tt.args.ctx, tt.args.promptTemp, tt.args.resume, tt.args.expectation, tt.args.jobList)

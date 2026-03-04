@@ -28,7 +28,7 @@ var (
 )
 
 func registerComponents(ctx context.Context) {
-	llm.InitOpenAIClient(ctx)
+	llm.InitOpenRouterClient(ctx)
 	llm.InitDeepSeekClient(ctx)
 	telegram.InitTelegramBot(ctx)
 	jobs.Register(ctx)
