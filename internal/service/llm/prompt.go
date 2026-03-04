@@ -15,11 +15,11 @@ func (c *LLMClient) GetJobMatchPromptTemplate(ctx context.Context) (promptTemp s
 
 	promptTempContent := gres.GetContent("resource/prompt/resume_match.md")
 
-	if promptTempContent == nil || len(promptTempContent) == 0 {
+	if len(promptTempContent) == 0 {
 		promptTempContent = []byte(gfile.GetContents("resource/prompt/resume_match.md"))
 	}
 
-	if promptTempContent == nil || len(promptTempContent) == 0 {
+	if len(promptTempContent) == 0 {
 		err = gerror.New("resource/prompt/resume_match.md not found")
 		g.Log().Line().Error(ctx, "resource/prompt/resume_match.md not found")
 		return
