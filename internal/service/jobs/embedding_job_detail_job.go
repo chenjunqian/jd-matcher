@@ -35,6 +35,7 @@ func runEmbeddingJobDetailJob(ctx context.Context, jobDetailDao dao.IJobDetail) 
 		g.Log().Line().Error(ctx, "get empty job desc embedding job detail total count error : ", err)
 		return
 	}
+	g.Log().Line().Infof(ctx, "embedding job detail total count: %d", totalCount)
 
 	if totalCount == 0 {
 		g.Log().Line().Info(ctx, "no empty job desc embedding job detail")
@@ -69,6 +70,7 @@ func runEmbeddingJobDetailJob(ctx context.Context, jobDetailDao dao.IJobDetail) 
 
 func embeddingJobDetailAndStore(ctx context.Context, job entity.JobDetail, jobDetailDao dao.IJobDetail) (err error) {
 	contents := []string{job.JobDesc}
+	g.Log().Line().Infof(ctx, "embedding job desc, contents length: %d, first content string length: %d", len(contents), len(job.JobDesc))
 	vector, err := llm.GetOpenRouterClient().EmbeddingText(ctx, contents)
 	if err != nil {
 		g.Log().Line().Error(ctx, "embedding job desc error : ", err)
