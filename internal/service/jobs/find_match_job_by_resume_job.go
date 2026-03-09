@@ -17,6 +17,10 @@ import (
 
 func StartFindMatchJobByResumeJob(ctx context.Context) {
 
+	startTime := gtime.Now()
+	runFindMatchJobByResumeJob(ctx, &dao.UserInfo, &dao.UserMatchedJob, &dao.JobDetail, llm.GetDeepSeekClient())
+	finishTime := gtime.Now()
+	g.Log().Line().Infof(ctx, "query match job by resume job cost %s", finishTime.Sub(startTime).String())
 	_, err := gcron.Add(ctx, "0 0 */3 * * *", func(ctx context.Context) {
 		startTime := gtime.Now()
 		runFindMatchJobByResumeJob(ctx, &dao.UserInfo, &dao.UserMatchedJob, &dao.JobDetail, llm.GetDeepSeekClient())
