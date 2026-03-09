@@ -22,7 +22,7 @@ llm:
     baseUrl: 'https://openrouter.ai/api/v1'
     apiKey: ''
     model: deepseek/deepseek-v3.2
-    embeddingModel: openai/text-embedding-3-small
+    embeddingModel: qwen/qwen3-embedding-8b
 
   deepseek:
     baseUrl: https://api.deepseek.com/v1
