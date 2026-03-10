@@ -17,10 +17,6 @@ import (
 
 func StartFindMatchJobByResumeJob(ctx context.Context) {
 
-	startTime := gtime.Now()
-	runFindMatchJobByResumeJob(ctx, &dao.UserInfo, &dao.UserMatchedJob, &dao.JobDetail, llm.GetDeepSeekClient())
-	finishTime := gtime.Now()
-	g.Log().Line().Infof(ctx, "query match job by resume job cost %s", finishTime.Sub(startTime).String())
 	_, err := gcron.Add(ctx, "0 0 */3 * * *", func(ctx context.Context) {
 		startTime := gtime.Now()
 		runFindMatchJobByResumeJob(ctx, &dao.UserInfo, &dao.UserMatchedJob, &dao.JobDetail, llm.GetDeepSeekClient())
@@ -131,13 +127,20 @@ func findMatchJobByResumeAndStore(ctx context.Context, userInfo entity.UserInfo,
 	}
 
 	outputJsonMap := outputJson.Map()
-	for key := range outputJsonMap {
-		jobJsonArray := outputJson.GetJsons(key)
-		if len(jobJsonArray) == 0 {
-			continue
+	if len(outputJsonMap) > 0 {
+		for key := range outputJsonMap {
+			jobJsonArray := outputJson.GetJsons(key)
+			if len(jobJsonArray) == 0 {
+				continue
+			}
+			outputJson.GetJson(key).Scan(&outputJobList)
+			break
 		}
-		outputJson.GetJson(key).Scan(&outputJobList)
-		break
+	} else {
+		err = outputJson.Scan(&outputJobList)
+		if err != nil {
+			g.Log().Line().Errorf(ctx, "scan array error :\n%s", err)
+		}
 	}
 
 	var matchJobs []entity.UserMatchedJob
