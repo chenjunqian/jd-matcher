@@ -45,6 +45,7 @@ Follow these steps:
    - Output **only** a valid JSON string in the specified format
    - No additional text, explanations, or markdown formatting
    - Jobs that don't meet expectations should not appear in the output
+   - Output jobs that only the matched scroe higher than 6 (include 6)
 
 ### Input JSON Format Example (Job List)
 
