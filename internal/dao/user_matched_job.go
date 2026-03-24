@@ -34,7 +34,7 @@ var (
 // Fill with you ideas below.
 type IUserMatchedJob interface {
 	CreateMatchJobIfNotExist(ctx context.Context, matchedJobs []entity.UserMatchedJob) error
-	GetUserMatchedJobDetailList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error) 
+	GetUserMatchedJobDetailList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error)
 	GetUserMatchedJobDetailListTotalCount(ctx context.Context, userId string) (count int, err error)
 	GetUserNonNotifiedJobList(ctx context.Context, userId string, offset, limit int) (entities []dto.UserMatchedDetailJob, err error)
 	GetUserNonNotifiedJobTotalCount(ctx context.Context, userId string) (count int, err error)
@@ -68,7 +68,7 @@ func (dao *userMatchedJobDao) GetUserMatchedJobDetailList(ctx context.Context, u
 
 	g.Model("user_matched_job umj").
 		InnerJoin("job_detail jd", "umj.job_id = jd.id").
-		Fields("jd.*, umj.user_id, umj.match_score").
+		Fields("jd.*, umj.user_id, umj.match_score, umj.match_reason").
 		Where("umj.user_id = ?", userId).
 		Order("umj.update_time desc").
 		Limit(limit).
@@ -92,7 +92,7 @@ func (dao *userMatchedJobDao) GetUserNonNotifiedJobList(ctx context.Context, use
 
 	g.Model("user_matched_job umj").
 		InnerJoin("job_detail jd", "umj.job_id = jd.id").
-		Fields("jd.*, umj.user_id, umj.match_score").
+		Fields("jd.*, umj.user_id, umj.match_score, umj.match_reason").
 		Where("umj.notification = ? and umj.user_id = ?", false, userId).
 		Order("umj.match_score desc").
 		Limit(limit).
