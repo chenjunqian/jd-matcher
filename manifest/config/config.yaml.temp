@@ -27,4 +27,5 @@ llm:
   deepseek:
     baseUrl: https://api.deepseek.com/v1
     apiKey: ''
-    model: deepseek-reasoner
+    model: deepseek-v4-flash
+    reasoningEffort: high
