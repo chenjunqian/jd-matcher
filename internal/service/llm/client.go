@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/tmc/langchaingo/llms/openai"
@@ -59,13 +60,22 @@ func InitDeepSeekClient(ctx context.Context) error {
 
 	if model == "" || baseUrl == "" || token == "" {
 		g.Log().Line().Fatalf(ctx, "model:%s, baseUrl:%s, token:%s", model, baseUrl, token)
-		return errors.New("model or baseUrl or token is empty for openai client")
+		return errors.New("model or baseUrl or token is empty for deepseek client")
 	}
+
+	reasoningEffort := g.Cfg().MustGetWithEnv(ctx, "llm.deepseek.reasoningEffort").String()
+	if reasoningEffort == "" {
+		reasoningEffort = "high"
+	}
+
+	transport := NewReasoningEffortTransport(http.DefaultTransport, reasoningEffort)
+	httpClient := &http.Client{Transport: transport}
 
 	opts := []openai.Option{
 		openai.WithModel(model),
 		openai.WithBaseURL(baseUrl),
 		openai.WithToken(token),
+		openai.WithHTTPClient(httpClient),
 	}
 
 	var err error
