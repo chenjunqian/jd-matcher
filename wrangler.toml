@@ -31,3 +31,7 @@ max_retries = 3
 
 [triggers]
 crons = ["0 */2 * * *", "*/10 * * * *", "0 */3 * * *"]
+
+[observability.logs]
+enabled = true
+invocation_logs = true
