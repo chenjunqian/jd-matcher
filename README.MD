@@ -1,49 +1,66 @@
 # JD Matcher
 
-[![Go Version](https://img.shields.io/badge/Go-1.22+-blue.svg)](https://golang.org)
-[![GoFrame](https://img.shields.io/badge/GoFrame-v2.8.1-orange.svg)](https://goframe.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg)](https://typescriptlang.org)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange.svg)](https://workers.cloudflare.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 JD Matcher is an intelligent job matching tool that leverages Large Language Model (LLM) capabilities to find the most suitable jobs based on user resumes and job descriptions. The project provides services through a Telegram bot, automatically crawling job listings and notifying users when matching positions are found.
 
 ## ✨ Features
 
-- 🤖 **Intelligent Matching**: Uses OpenAI text-embedding-ada-002 to generate vector representations of jobs and resumes for accurate matching
-- 📱 **Telegram Bot Integration**: User-friendly interface for resume upload, job search, and matching results
+- 🤖 **Intelligent Matching**: Uses LLM-based embeddings (OpenRouter) for vector representations and DeepSeek for semantic matching
+- 📱 **Telegram Bot Integration**: grammY-powered bot with pagination, file upload, and inline keyboards
 - 🕷️ **Automated Job Crawling**: Supports RemoteOK and WeWorkRemotely job sources with scheduled crawling
 - 🔔 **Smart Notifications**: Automatically notifies users when matching jobs are found
-- 🐳 **Docker Support**: Easy deployment with containerization
-- ⚡ **High Performance**: Built on GoFrame framework with PostgreSQL and pgvector for efficient vector search
+- ⚡ **Cloud-Native**: Built on Cloudflare Workers with D1 database, Vectorize search, and Queue-based async jobs
+- 🚀 **Fully Serverless**: No infrastructure to manage, auto-scaling, pay-per-use
 
 ## 🏗️ Architecture
 
 ```txt
 jd-matcher/
-├── internal/
-│   ├── cmd/           # Command line entry and server startup
-│   ├── controller/    # Controller layer (reserved)
-│   ├── dao/           # Data Access Object layer
-│   ├── model/         # Data model definitions
-│   ├── service/       # Business logic layer
-│   │   ├── crawler/   # Job crawler service
-│   │   ├── jobs/      # Scheduled task service
-│   │   ├── llm/       # LLM client and vector service
-│   │   └── telegram/  # Telegram bot service
-│   └── packed/        # Resource packing
-├── manifest/          # Configuration files and deployment manifests
-├── resource/          # Static resources and templates
-└── utility/           # Utility functions
+├── src/
+│   ├── index.ts               # Entry: Hono routes + scheduled() + queue()
+│   ├── lib/
+│   │   ├── types.ts           # All type definitions + Env bindings
+│   │   ├── db/                # D1 CRUD (job_detail, user_info, user_matched_job)
+│   │   ├── llm/               # OpenRouter embeddings + DeepSeek chat + prompt
+│   │   ├── crawler/           # RemoteOK + WeWorkRemotely scrapers
+│   │   └── vectorize/         # Vectorize upsert/query helpers
+│   ├── bot/
+│   │   ├── bot.ts             # grammY setup + env middleware + command registration
+│   │   ├── session.ts         # KV-backed chat session (10min TTL)
+│   │   ├── constants.ts       # All Telegram reply texts
+│   │   └── handlers/          # start, help, all_jobs, jobs, upload_resume, expectation
+│   └── jobs/
+│       ├── crawl.ts           # Fetch jobs from RemoteOK + WeWorkRemotely
+│       ├── embed.ts           # Generate embeddings → store in Vectorize
+│       ├── match.ts           # Vector search → DeepSeek → store matches
+│       └── notify.ts          # Unnotified matches → Telegram API
+├── migrations/
+│   └── 001_initial.sql        # D1 schema
+├── wrangler.toml              # Single config — D1, KV, Vectorize, Queue, Cron
+├── package.json
+└── tsconfig.json
+```
+
+## Flow
+
+```
+Cron        ──▶  scheduled()  ──▶  JOBS_QUEUE.send({type})  ──▶  queue() → dispatch
+Telegram    ──▶  Hono POST /webhook  ──▶  grammY bot  ──▶  command handlers
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Go 1.22 or higher
-- PostgreSQL 12+ with pgvector extension
-- Docker (optional)
-- Telegram Bot Token
-- OpenAI API Key
+- Node.js 20+ (for local development)
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npx wrangler`)
+- Cloudflare account
+- Telegram Bot Token (from [@BotFather](https://t.me/botfather))
+- OpenRouter API Key
+- DeepSeek API Key
 
 ### Installation
 
@@ -57,153 +74,148 @@ jd-matcher/
 2. **Install dependencies**
 
    ```bash
-   go mod download
+   npm install
    ```
 
-3. **Set up configuration**
+3. **Set up Cloudflare resources**
 
    ```bash
-   cp manifest/config/config.yaml.temp manifest/config/config.yaml
+   # Create D1 database
+   npx wrangler d1 create jd-matcher-db
+
+   # Copy the database_id from output into wrangler.toml
+
+   # Run migration
+   npx wrangler d1 execute jd-matcher-db --file migrations/001_initial.sql
+
+   # Create KV namespace
+   npx wrangler kv:namespace create "SESSION_KV"
+   # Copy id into wrangler.toml [[kv_namespaces]]
+
+   # Create Vectorize indexes
+   npx wrangler vectorize create job-desc-embeddings --dimensions=1024 --metric=cosine
+   npx wrangler vectorize create resume-embeddings --dimensions=1024 --metric=cosine
+
+   # Create job queue
+   npx wrangler queue create jd-jobs-pool
    ```
 
-   Edit `manifest/config/config.yaml` and add your configuration:
-
-   ```yaml
-   telegram:
-     bot:
-       token: "YOUR_TELEGRAM_BOT_TOKEN"
-   
-   openai:
-     apiKey: "YOUR_OPENAI_API_KEY"
-     baseUrl: "https://api.openai.com/v1"  # optional
-   
-   database:
-     default:
-       link: "postgres://username:password@localhost:5432/jdmatcherdb?sslmode=disable"
-   ```
-
-4. **Set up database**
+4. **Set secrets**
 
    ```bash
-   # Start PostgreSQL container
-   cd manifest/config/database
-   ./start_container.sh
-   
-   # Create database and table structure
-   psql -h localhost -U jdmatcher -d jdmatcherdb -f schema.sql
+   npx wrangler secret put TELEGRAM_BOT_TOKEN
+   npx wrangler secret put LLM_OPENROUTER_APIKEY
+   npx wrangler secret put LLM_DEEPSEEK_APIKEY
    ```
 
-5. **Run the application**
+5. **Deploy**
 
    ```bash
-   # Build and run
-   make build
-   ./main
-   
-   # Or run directly
-   go run main.go
+   npx wrangler deploy
    ```
 
-### Docker Deployment
+6. **Set Telegram webhook**
+
+   ```bash
+   curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://jd-matcher.<subdomain>.workers.dev/webhook"
+   ```
+
+### Local Development
 
 ```bash
-# Build image
-docker build -t jd-matcher .
+# Start local dev server with bindings
+npx wrangler dev
 
-# Run container
-docker run -p 8199:8199 \
-  -e TELEGRAM_BOT_TOKEN="your_token" \
-  -e OPENAI_API_KEY="your_key" \
-  jd-matcher
+# Register webhook for local testing (requires tunnel)
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-tunnel.ngrok.io/webhook"
 ```
 
 ## 📖 Usage
 
 ### Telegram Bot Commands
 
-- `/start` - Start the bot and see available commands
-- `/upload` - Upload your resume
-- `/myjobs` - View your matched jobs
-- `/help` - Get help information
+| Command | Description |
+|---|---|
+| `/start` | Start the bot |
+| `/help` | Usage help |
+| `/all_jobs` | Browse all available jobs (paginated) |
+| `/jobs` | Browse your matched jobs (paginated) |
+| `/upload_resume` | Upload your resume (text file) |
+| `/expectation` | Set job expectations (location, salary, language, etc.) |
 
 ### How It Works
 
-1. **Resume Upload**: Users upload their resumes through the Telegram bot
-2. **Vector Embedding**: Resumes are converted to vector representations using OpenAI embeddings
-3. **Job Crawling**: The system automatically crawls jobs from supported sources
-4. **Matching**: Jobs are matched against user resumes using vector similarity
-5. **Notifications**: Users are notified when matching jobs are found
+1. **Resume Upload**: Users upload their resumes as text files through the Telegram bot
+2. **Vector Embedding**: Resumes are converted to vector representations using OpenRouter embeddings
+3. **Job Crawling**: Cron triggers crawl jobs from RemoteOK and WeWorkRemotely every 2 hours
+4. **Embedding Generation**: New jobs are embedded via Queue consumer and stored in Vectorize
+5. **Matching**: Vector search finds similar jobs, then DeepSeek LLM performs semantic ranking
+6. **Notifications**: Users are notified when matching jobs are found
 
 ## 🛠️ Development
 
-### Project Structure
+### Key Commands
 
-- **Crawler Service**: `internal/service/crawler/` - Job crawling implementations
-- **LLM Service**: `internal/service/llm/` - LLM client and vector operations
-- **Telegram Service**: `internal/service/telegram/` - Bot logic and message handling
-- **Scheduled Jobs**: `internal/service/jobs/` - Background task management
+```bash
+npm run dev              # Start local dev server
+npm run deploy           # Deploy to Cloudflare Workers
+npx wrangler tail        # Tail production logs
+npx tsc --noEmit         # Type-check
+```
 
 ### Adding New Job Sources
 
-1. Create a new crawler in `internal/service/crawler/`
-2. Implement the crawler interface
-3. Register scheduled tasks in `internal/service/jobs/register.go`
+1. Create a new crawler file in `src/lib/crawler/`
+2. Export the fetch function
+3. Add it to the crawl pipeline in `src/jobs/crawl.ts`
 
 ### Adding New LLM Providers
 
-1. Add client implementation in `internal/service/llm/`
-2. Initialize client in `internal/cmd/cmd.go`
-3. Update configuration file template
+1. Add the provider client in `src/lib/llm/`
+2. Add environment variables to `src/lib/types.ts` `Env` interface
+3. Add the API call to the appropriate job handler
 
-### Testing
+### Adding New Bot Commands
 
-```bash
-# Run all tests
-go test ./...
+1. Add handler in `src/bot/handlers/`
+2. Register in `src/bot/bot.ts` with `bot.command()`
+3. Add reply text to `src/bot/constants.ts`
 
-# Run tests with coverage
-go test -cover ./...
-
-# Run specific test
-go test ./internal/service/crawler/remote_ok_test.go
-```
-
-### Build Tools
-
-The project includes a comprehensive Makefile:
+## 🧪 Testing
 
 ```bash
-make build          # Build project
-make dao           # Generate data access objects
-make service       # Generate service interfaces
-make image         # Build Docker image
-make deploy        # Deploy to Kubernetes
+# Type checking
+npx tsc --noEmit
+
+# Local testing with wrangler
+npx wrangler dev --test-scheduled
+curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"
 ```
 
 ## 📊 Configuration
 
-### Required Environment Variables
+### Environment Variables (Secrets)
 
-- `TELEGRAM_BOT_TOKEN` - Telegram bot token
-- `OPENAI_API_KEY` - OpenAI API key
-- `DATABASE_URL` - PostgreSQL connection string
+| Variable | Required | Description |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | Yes | Telegram bot token from @BotFather |
+| `LLM_OPENROUTER_APIKEY` | Yes | OpenRouter API key for embeddings |
+| `LLM_DEEPSEEK_APIKEY` | Yes | DeepSeek API key for job matching |
 
-### Optional Configuration
+### Optional Environment Variables
 
-- `OPENAI_BASE_URL` - Custom OpenAI API endpoint
-- `SERVER_ADDRESS` - Server listening address
-- `LOG_LEVEL` - Logging level configuration
+| Variable | Default | Description |
+|---|---|---|
+| `LLM_OPENROUTER_BASEURL` | `https://openrouter.ai/api/v1` | OpenRouter API endpoint |
+| `LLM_OPENROUTER_MODEL` | `deepseek/deepseek-v3.2` | Chat model for OpenRouter |
+| `LLM_OPENROUTER_EMBEDDINGMODEL` | `qwen/qwen3-embedding-8b` | Embedding model |
+| `LLM_DEEPSEEK_BASEURL` | `https://api.deepseek.com/v1` | DeepSeek API endpoint |
+| `LLM_DEEPSEEK_MODEL` | `deepseek-v4-flash` | DeepSeek chat model |
+| `LLM_DEEPSEEK_REASONINGEFFORT` | `high` | DeepSeek reasoning effort |
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
-
-### Development Guidelines
-
-- Follow Go coding conventions
-- Write unit tests for new features
-- Update documentation as needed
-- Use meaningful commit messages
 
 ## 📄 License
 
@@ -211,18 +223,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- [GoFrame](https://goframe.org) - The Go framework used
-- [OpenAI](https://openai.com) - For the embedding API
-- [Telegram](https://telegram.org) - For the bot platform
-- [PostgreSQL](https://postgresql.org) - Database with pgvector extension
+- [Cloudflare Workers](https://workers.cloudflare.com) - Serverless compute platform
+- [Hono](https://hono.dev) - Lightweight web framework
+- [grammY](https://grammy.dev) - Telegram bot framework
+- [OpenRouter](https://openrouter.ai) - Unified LLM API gateway
+- [DeepSeek](https://deepseek.com) - LLM provider
+- [RemoteOK](https://remoteok.com) - Remote job board
+- [WeWorkRemotely](https://weworkremotely.com) - Remote job board
 
 ## 📞 Support
 
 If you have any questions or issues, please:
-
 1. Check the [Issues](https://github.com/chenjunqian/jd-matcher/issues) page
 2. Create a new issue if needed
-3. Join our Telegram community (link coming soon)
 
 ---
 
