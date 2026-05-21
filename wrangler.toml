@@ -1,0 +1,33 @@
+name = "jd-matcher"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jd-matcher-db"
+database_id = "local-dev-placeholder"
+
+[[kv_namespaces]]
+binding = "SESSION_KV"
+id = "local-dev-placeholder"
+
+[[vectorize]]
+binding = "JOB_DESC_EMBEDDINGS"
+index_name = "job-desc-embeddings"
+
+[[vectorize]]
+binding = "RESUME_EMBEDDINGS"
+index_name = "resume-embeddings"
+
+[[queues.producers]]
+queue = "jd-jobs-pool"
+binding = "JOBS_QUEUE"
+
+[[queues.consumers]]
+queue = "jd-jobs-pool"
+max_batch_size = 1
+max_retries = 3
+
+[triggers]
+crons = ["0 */2 * * *", "*/10 * * * *", "0 */3 * * *"]

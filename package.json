@@ -1,0 +1,24 @@
+{
+  "name": "jd-matcher",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "dev:cron": "wrangler dev --test-scheduled",
+    "dev:db": "wrangler d1 execute jd-matcher-db --local --file ./migrations/001_initial.sql",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "migrate:init": "wrangler d1 execute jd-matcher-db --file ./migrations/001_initial.sql"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "fast-xml-parser": "^5.0.0",
+    "grammy": "^1.35.0",
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250301.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.0.0"
+  }
+}

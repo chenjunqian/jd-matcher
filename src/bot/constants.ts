@@ -1,0 +1,12 @@
+export const COMMON_ERROR = "There is something wrong with my service. Please try again later.";
+export const LOGIN_HINT = "Please use /start command to login again.";
+export const START_REPLY = "Hi %s ! I'm a bot that can help you find a job. You can use /jobs to get all available jobs for you. \nYou can use /upload_resume to upload your resume.";
+export const START_ERROR = "Hi %s ! I'm a bot that can help you find a job. Seems like there is something wrong with my service. Please try again later.";
+export const HELP_REPLY = "Use /upload_resume to upload your resume first.\nThen you can use /jobs to get all available jobs for you.";
+export const RESUME_SUCCESS = "Your resume has been uploaded! We will notify you when we find a job for you. You can also use /jobs to view all available jobs for you.";
+export const RESUME_HINT = "Please upload your resume file.";
+export const RESUME_TYPE_ERR = "Please upload your resume with text file.";
+export const RESUME_EXIST = "You have already uploaded your resume. If you want to update your resume, please upload it again.";
+export const EXPECT_HINT_EMPTY = "Please enter your job expectations. This will help us find better matching jobs for you. For example: 'Remote, Shanghai, Python, English'";
+export const EXPECT_HINT_EXISTS = "Your current expectations:\n---\n%s\n---\nPlease enter your new expectations. This will OVERWRITE your previous expectations.";
+export const EXPECT_SUCCESS = "Your job expectations have been saved!";
