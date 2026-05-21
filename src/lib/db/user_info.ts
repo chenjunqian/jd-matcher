@@ -8,13 +8,13 @@ export async function createUserInfoIfNotExist(db: D1Database, user: UserInfo): 
   if (existing) {
     await db
       .prepare("UPDATE user_info SET name=?, email=?, resume=?, job_expectations=? WHERE telegram_id=?")
-      .bind(user.name, user.email, user.resume, user.jobExpectations, user.telegramId)
+      .bind(user.name ?? null, user.email ?? null, user.resume ?? null, user.jobExpectations ?? null, user.telegramId)
       .run();
     return;
   }
   await db
     .prepare("INSERT INTO user_info (id, name, email, telegram_id, resume, job_expectations) VALUES (?,?,?,?,?,?)")
-    .bind(user.id, user.name, user.email, user.telegramId, user.resume, user.jobExpectations)
+    .bind(user.id, user.name ?? null, user.email ?? null, user.telegramId, user.resume ?? null, user.jobExpectations ?? null)
     .run();
 }
 
