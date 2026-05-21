@@ -6,11 +6,11 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "jd-matcher-db"
-database_id = "local-dev-placeholder"
+database_id = "951ab241-9803-4de7-88be-233f21ea14be"
 
 [[kv_namespaces]]
 binding = "SESSION_KV"
-id = "local-dev-placeholder"
+id = "eafd099fdff8492f9dabb4beb3887415"
 
 [[vectorize]]
 binding = "JOB_DESC_EMBEDDINGS"
