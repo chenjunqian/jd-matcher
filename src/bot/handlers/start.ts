@@ -12,7 +12,8 @@ export async function startCommandHandler(ctx: BotContext) {
       await createUserInfoIfNotExist(env.DB, { id: crypto.randomUUID(), telegramId: userId, name });
     }
     await ctx.reply(START_REPLY.replace("%s", name));
-  } catch {
+  } catch (e) {
+    console.error(`[start] error for user ${userId}:`, e);
     await ctx.reply(START_ERROR.replace("%s", name));
   }
 }
