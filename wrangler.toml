@@ -30,7 +30,7 @@ max_batch_size = 1
 max_retries = 3
 
 [triggers]
-crons = ["0 */2 * * *", "*/10 * * * *", "0 */3 * * *"]
+crons = ["0 */2 * * *", "0 * * * *", "0 */3 * * *"]
 
 [vars]
 LLM_OPENROUTER_BASEURL = "https://api.gptsapi.net/v1"

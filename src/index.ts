@@ -85,18 +85,29 @@ export default {
   fetch: app.fetch,
 
   async scheduled(_controller: ScheduledController, env: Env) {
-    const totalUsers = await getUsersWithResumeCount(env.DB);
+    const hour = new Date().getUTCHours();
 
-    await env.JOBS_QUEUE.send({ type: "crawl" });
-    await env.JOBS_QUEUE.send({ type: "embed" });
+    const jobs: { type: JobMessage["type"]; offset?: number }[] = [];
 
-    for (let i = 0; i < totalUsers; i++) {
-      await env.JOBS_QUEUE.send({ type: "match", offset: i });
+    if (hour % 2 === 0) {
+      jobs.push({ type: "crawl" });
     }
 
-    await env.JOBS_QUEUE.send({ type: "notify" });
+    jobs.push({ type: "embed" });
 
-    console.log(`[cron] enqueued crawl, embed, ${totalUsers} match, notify`);
+    if (hour % 3 === 0) {
+      const totalUsers = await getUsersWithResumeCount(env.DB);
+      for (let i = 0; i < totalUsers; i++) {
+        jobs.push({ type: "match", offset: i });
+      }
+      jobs.push({ type: "notify" });
+    }
+
+    for (const j of jobs) {
+      await env.JOBS_QUEUE.send(j);
+    }
+
+    console.log(`[cron] enqueued ${jobs.map(j => j.type).join(", ")}`);
   },
 
   async queue(batch: MessageBatch<JobMessage>, env: Env) {
