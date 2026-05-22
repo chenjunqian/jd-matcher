@@ -12,7 +12,7 @@ import { getUsersWithResumeCount } from "./lib/db/user_info.js";
 const app = new Hono<{ Bindings: Env }>();
 
 // ─── Telegram webhook ──────────────────────────────────────────────────────
-app.post("/webhook", (c) => {
+app.post("/telegram/webhook", (c) => {
   const bot = createBot(c.env.TELEGRAM_BOT_TOKEN, c.env);
   return webhookCallback(bot, "cloudflare-mod")(c.req.raw);
 });
