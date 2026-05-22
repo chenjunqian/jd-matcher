@@ -86,5 +86,5 @@ npx wrangler secret put LLM_DEEPSEEK_APIKEY
 npx wrangler deploy
 
 # 9. Set Telegram webhook
-curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://jd-matcher.<subdomain>.workers.dev/webhook"
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://jd-matcher.<subdomain>.workers.dev/telegram/webhook"
 ```

@@ -117,7 +117,7 @@ Telegram    ──▶  Hono POST /webhook  ──▶  grammY bot  ──▶  com
 6. **Set Telegram webhook**
 
    ```bash
-   curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://jd-matcher.<subdomain>.workers.dev/webhook"
+   curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://jd-matcher.<subdomain>.workers.dev/telegram/webhook"
    ```
 
 ### Local Development
@@ -127,7 +127,7 @@ Telegram    ──▶  Hono POST /webhook  ──▶  grammY bot  ──▶  com
 npx wrangler dev
 
 # Register webhook for local testing (requires tunnel)
-curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-tunnel.ngrok.io/webhook"
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-tunnel.ngrok.io/telegram/webhook"
 ```
 
 ## 📖 Usage
