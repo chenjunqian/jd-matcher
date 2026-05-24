@@ -1,14 +1,4 @@
 import type { JobDetail } from "../types.js";
-import { MockVectorizeIndex } from "./mock.js";
-
-// ── Single shared mock instance for local dev ──
-
-let mockIndex: MockVectorizeIndex | null = null;
-
-function getMock(): MockVectorizeIndex {
-  if (!mockIndex) mockIndex = new MockVectorizeIndex();
-  return mockIndex;
-}
 
 // ── Helpers ──
 
@@ -17,36 +7,21 @@ function toNumberArray(values: VectorFloatArray | number[]): number[] {
   return values;
 }
 
-// ── Wrapped exports with local-dev fallback ──
+// ── Wrapped exports ──
 
 export async function upsertVectors(index: any, vectors: { id: string; values: number[] }[]): Promise<void> {
-  try {
-    await index.upsert(vectors);
-  } catch {
-    await getMock().upsert(vectors);
-  }
+  await index.upsert(vectors);
 }
 
 export async function getVectorById(index: any, id: string): Promise<number[] | null> {
-  try {
-    const r = await index.getByIds([id]);
-    if (!r.length) return null;
-    return toNumberArray(r[0].values);
-  } catch {
-    const r = await getMock().getByIds([id]);
-    if (!r.length) return null;
-    return r[0].values;
-  }
+  const r = await index.getByIds([id]);
+  if (!r.length) return null;
+  return toNumberArray(r[0].values);
 }
 
 export async function querySimilar(index: any, vector: number[], topK = 30): Promise<{ id: string; score: number }[]> {
-  try {
-    const r = await index.query(vector, { topK, returnValues: false, returnMetadata: false });
-    return (r.matches ?? []).map((m: any) => ({ id: m.id, score: m.score }));
-  } catch {
-    const r = await getMock().query(vector, { topK, returnValues: false, returnMetadata: false });
-    return r.matches.map((m) => ({ id: m.id, score: m.score }));
-  }
+  const r = await index.query(vector, { topK, returnValues: false, returnMetadata: false });
+  return (r.matches ?? []).map((m: any) => ({ id: m.id, score: m.score }));
 }
 
 export async function querySimilarExcludingMatched(
