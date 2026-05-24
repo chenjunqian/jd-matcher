@@ -45,7 +45,7 @@ export async function uploadResumeFileHandler(ctx: BotContext) {
 
     if (!user) {
       const name = `${ctx.from!.last_name ?? ""} ${ctx.from!.first_name ?? ""}`.trim();
-      await createUserInfoIfNotExist(env.DB, { id: uid, telegramId: tid, name, resume: text });
+      await createUserInfoIfNotExist(env.DB, { id: uid, telegramId: tid, name });
     }
 
     await upsertVectors(env.RESUME_EMBEDDINGS, [{ id: uid, values: vector }]);
