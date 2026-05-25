@@ -20,7 +20,7 @@ export async function getVectorById(index: any, id: string): Promise<number[] | 
 }
 
 export async function querySimilar(index: any, vector: number[], topK = 30): Promise<{ id: string; score: number }[]> {
-  const r = await index.query(vector, { topK, returnValues: false, returnMetadata: false });
+  const r = await index.query(vector, { topK, returnValues: false, returnMetadata: "none" });
   return (r.matches ?? []).map((m: any) => ({ id: m.id, score: m.score }));
 }
 

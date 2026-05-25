@@ -71,7 +71,7 @@ export default {
         }
         msg.ack();
       } catch (err) {
-        console.error(`[queue] ${type} failed:`, err);
+        console.error(`[queue] ${type} failed:`, err, msg.body);
         msg.retry({ delaySeconds: 60 });
       }
     }
