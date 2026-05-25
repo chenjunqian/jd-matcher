@@ -10,7 +10,7 @@ export async function embedText(env: Env, contents: string[]): Promise<number[][
       Authorization: `Bearer ${env.LLM_OPENROUTER_APIKEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model, input: contents }),
+    body: JSON.stringify({ model, input: contents, dimensions: 1536 }),
   });
 
   if (!resp.ok) throw new Error(`embedding error ${resp.status}: ${await resp.text()}`);
