@@ -1,6 +1,56 @@
-import type { Env } from "../lib/types.js";
+import type { Env, UserMatchedDetailJob } from "../lib/types.js";
 import { getAllUserInfoCount, getUserInfoList } from "../lib/db/user_info.js";
 import { getUserNonNotifiedJobTotalCount, getUserNonNotifiedJobList, updateAllMatchJobNotified } from "../lib/db/user_matched_job.js";
+
+function buildMessage(jobs: UserMatchedDetailJob[]): string {
+  let msg = "You have new matched jobs, please check.\n\n";
+  for (const j of jobs) {
+    msg += `Title : ${j.title}\nLink : ${j.link}\nLocation : ${j.location}\nSalary : ${j.salary}\nMatch Score : ${j.matchScore}\nMatch Reason : ${j.matchReason}\nDate : ${(j.updateTime ?? "").split("T")[0]}\n\n`;
+  }
+  msg += "You can use /jobs to get all available jobs for you.";
+  return msg;
+}
+
+async function sendTelegramMessage(token: string, chatId: string, text: string): Promise<{ ok: boolean; description?: string }> {
+  const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text }),
+  });
+  const body = await resp.json() as { ok: boolean; description?: string };
+  return { ok: body.ok, description: body.description };
+}
+
+export async function sendJobsInChunks(env: Env, telegramId: string, jobs: UserMatchedDetailJob[], userId: string): Promise<void> {
+  let pendingJobs = jobs.slice();
+  let batchSize = pendingJobs.length;
+
+  while (pendingJobs.length > 0) {
+    const batch = pendingJobs.slice(0, batchSize);
+    const resp = await sendTelegramMessage(env.TELEGRAM_BOT_TOKEN, telegramId, buildMessage(batch));
+
+    if (resp.ok) {
+      pendingJobs = pendingJobs.slice(batchSize);
+      batchSize = pendingJobs.length;
+      continue;
+    }
+
+    if (resp.description?.includes("message is too long")) {
+      if (batch.length <= 1) {
+        console.log(`[notify] skipping too-long job ${batch[0].id} for user ${userId}`);
+        pendingJobs = pendingJobs.slice(1);
+        batchSize = pendingJobs.length;
+        continue;
+      }
+      const newSize = Math.ceil(batch.length / 2);
+      console.log(`[notify] splitting message for user ${userId}: ${batch.length} → ${newSize} jobs`);
+      batchSize = newSize;
+      continue;
+    }
+
+    throw new Error(`[notify] telegram error for user ${userId}: ${JSON.stringify(resp)}`);
+  }
+}
 
 export async function handleNotify(env: Env): Promise<void> {
   const total = await getAllUserInfoCount(env.DB);
@@ -17,24 +67,9 @@ export async function handleNotify(env: Env): Promise<void> {
         const jobs = await getUserNonNotifiedJobList(env.DB, u.id, 0, 10);
         if (!jobs.length) continue;
 
-        let msg = "You have new matched jobs, please check.\n\n";
-        for (const j of jobs) {
-          msg += `Title : ${j.title}\nLink : ${j.link}\nLocation : ${j.location}\nSalary : ${j.salary}\nMatch Score : ${j.matchScore}\nMatch Reason : ${j.matchReason}\nDate : ${(j.updateTime ?? "").split("T")[0]}\n\n`;
-        }
-        msg += "You can use /jobs to get all available jobs for you.";
-
-        const resp = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: u.telegramId, text: msg }),
-        });
-
-        if (resp.ok) {
-          await updateAllMatchJobNotified(env.DB, u.id);
-          console.log(`[notify] notified user ${u.id} (${u.telegramId})`);
-        } else {
-          console.error(`[notify] telegram error for ${u.id}: ${await resp.text()}`);
-        }
+        await sendJobsInChunks(env, u.telegramId, jobs, u.id);
+        await updateAllMatchJobNotified(env.DB, u.id);
+        console.log(`[notify] notified user ${u.id} (${u.telegramId})`);
       } catch (e) { console.error(`[notify] failed for user ${u.id}:`, e); }
     }
   }
