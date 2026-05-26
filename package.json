@@ -7,6 +7,7 @@
     "dev:cron": "wrangler dev --test-scheduled",
     "dev:db": "wrangler d1 execute jd-matcher-db --local --file ./migrations/001_initial.sql",
     "deploy": "wrangler deploy",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "migrate:init": "wrangler d1 execute jd-matcher-db --file ./migrations/001_initial.sql"
   },
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250301.0",
     "typescript": "^5.7.0",
+    "vitest": "^4.1.7",
     "wrangler": "^4.0.0"
   }
 }
