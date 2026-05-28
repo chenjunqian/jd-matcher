@@ -1,6 +1,10 @@
 import type { Env, UserMatchedDetailJob } from "../lib/types.js";
 import { getAllUserInfoCount, getUserInfoList } from "../lib/db/user_info.js";
-import { getUserNonNotifiedJobTotalCount, getUserNonNotifiedJobList, updateAllMatchJobNotified } from "../lib/db/user_matched_job.js";
+import {
+  getUserNonNotifiedJobTotalCount,
+  getUserNonNotifiedJobList,
+  updateMatchJobsNotifiedByIds,
+} from "../lib/db/user_matched_job.js";
 
 function buildMessage(jobs: UserMatchedDetailJob[]): string {
   let msg = "You have new matched jobs, please check.\n\n";
@@ -27,9 +31,11 @@ export async function sendJobsInChunks(env: Env, telegramId: string, jobs: UserM
 
   while (pendingJobs.length > 0) {
     const batch = pendingJobs.slice(0, batchSize);
+    const batchJobIds = batch.map((j) => j.id);
     const resp = await sendTelegramMessage(env.TELEGRAM_BOT_TOKEN, telegramId, buildMessage(batch));
 
     if (resp.ok) {
+      await updateMatchJobsNotifiedByIds(env.DB, userId, batchJobIds);
       pendingJobs = pendingJobs.slice(batchSize);
       batchSize = pendingJobs.length;
       continue;
@@ -38,6 +44,7 @@ export async function sendJobsInChunks(env: Env, telegramId: string, jobs: UserM
     if (resp.description?.includes("message is too long")) {
       if (batch.length <= 1) {
         console.log(`[notify] skipping too-long job ${batch[0].id} for user ${userId}`);
+        await updateMatchJobsNotifiedByIds(env.DB, userId, [batch[0].id]);
         pendingJobs = pendingJobs.slice(1);
         batchSize = pendingJobs.length;
         continue;
@@ -53,25 +60,38 @@ export async function sendJobsInChunks(env: Env, telegramId: string, jobs: UserM
 }
 
 export async function handleNotify(env: Env): Promise<void> {
-  const total = await getAllUserInfoCount(env.DB);
-  if (!total) { console.log("[notify] no users"); return; }
+  const LOCK_KEY = "notify-last-run";
+  const LOCK_TTL = 60;
 
-  const BATCH = 100;
-  for (let off = 0; off < total; off += BATCH) {
-    const users = await getUserInfoList(env.DB, off, BATCH);
-    for (const u of users) {
-      if (!u.telegramId) continue;
-      try {
-        const cnt = await getUserNonNotifiedJobTotalCount(env.DB, u.id);
-        if (!cnt) continue;
-        const jobs = await getUserNonNotifiedJobList(env.DB, u.id, 0, 10);
-        if (!jobs.length) continue;
-
-        await sendJobsInChunks(env, u.telegramId, jobs, u.id);
-        await updateAllMatchJobNotified(env.DB, u.id);
-        console.log(`[notify] notified user ${u.id} (${u.telegramId})`);
-      } catch (e) { console.error(`[notify] failed for user ${u.id}:`, e); }
-    }
+  const existing = await env.SESSION_KV.get(LOCK_KEY);
+  if (existing) {
+    console.log("[notify] skipped — another notify run is in progress");
+    return;
   }
-  console.log("[notify] done");
+  await env.SESSION_KV.put(LOCK_KEY, "1", { expirationTtl: LOCK_TTL });
+
+  try {
+    const total = await getAllUserInfoCount(env.DB);
+    if (!total) { console.log("[notify] no users"); return; }
+
+    const BATCH = 100;
+    for (let off = 0; off < total; off += BATCH) {
+      const users = await getUserInfoList(env.DB, off, BATCH);
+      for (const u of users) {
+        if (!u.telegramId) continue;
+        try {
+          const cnt = await getUserNonNotifiedJobTotalCount(env.DB, u.id);
+          if (!cnt) continue;
+          const jobs = await getUserNonNotifiedJobList(env.DB, u.id, 0, 10);
+          if (!jobs.length) continue;
+
+          await sendJobsInChunks(env, u.telegramId, jobs, u.id);
+          console.log(`[notify] notified user ${u.id} (${u.telegramId})`);
+        } catch (e) { console.error(`[notify] failed for user ${u.id}:`, e); }
+      }
+    }
+    console.log("[notify] done");
+  } finally {
+    await env.SESSION_KV.delete(LOCK_KEY);
+  }
 }

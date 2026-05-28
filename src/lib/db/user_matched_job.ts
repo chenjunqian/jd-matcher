@@ -54,6 +54,15 @@ export async function updateAllMatchJobNotified(db: D1Database, userId: string):
   await db.prepare("UPDATE user_matched_job SET notification=1 WHERE user_id=? AND notification=0").bind(userId).run();
 }
 
+export async function updateMatchJobsNotifiedByIds(db: D1Database, userId: string, jobIds: string[]): Promise<void> {
+  if (!jobIds.length) return;
+  const placeholders = jobIds.map(() => "?").join(",");
+  await db
+    .prepare(`UPDATE user_matched_job SET notification=1 WHERE user_id=? AND job_id IN (${placeholders})`)
+    .bind(userId, ...jobIds)
+    .run();
+}
+
 function mapRow(row: Record<string, unknown>): UserMatchedDetailJob {
   return {
     id: row.id as string,
