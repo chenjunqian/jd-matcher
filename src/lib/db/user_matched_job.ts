@@ -50,6 +50,16 @@ export async function getUserNonNotifiedJobTotalCount(db: D1Database, userId: st
   return r?.count ?? 0;
 }
 
+export async function getExistingMatchedJobIds(db: D1Database, userId: string, jobIds: string[]): Promise<string[]> {
+  if (!jobIds.length) return [];
+  const placeholders = jobIds.map(() => "?").join(",");
+  const rows = await db
+    .prepare(`SELECT job_id FROM user_matched_job WHERE user_id = ? AND job_id IN (${placeholders})`)
+    .bind(userId, ...jobIds)
+    .all<{ job_id: string }>();
+  return (rows.results ?? []).map((r) => r.job_id);
+}
+
 export async function updateAllMatchJobNotified(db: D1Database, userId: string): Promise<void> {
   await db.prepare("UPDATE user_matched_job SET notification=1 WHERE user_id=? AND notification=0").bind(userId).run();
 }

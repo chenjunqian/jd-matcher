@@ -1,7 +1,7 @@
 import type { Env, UserMatchedJobPromptInput } from "../lib/types.js";
 import { getUsersWithResume } from "../lib/db/user_info.js";
 import { getJobDetailsByIds } from "../lib/db/job_detail.js";
-import { createMatchJobIfNotExist } from "../lib/db/user_matched_job.js";
+import { createMatchJobIfNotExist, getExistingMatchedJobIds } from "../lib/db/user_matched_job.js";
 import { getVectorById, querySimilar } from "../lib/vectorize/index.js";
 import { runMatchAgent } from "../lib/agent/index.js";
 
@@ -36,7 +36,16 @@ export async function handleMatch(env: Env, offset: number): Promise<void> {
     return;
   }
 
-  const input: UserMatchedJobPromptInput[] = jobs.map((j) => ({
+  const existingIds = await getExistingMatchedJobIds(env.DB, user.id, jobs.map((j) => j.id));
+  console.log(`[match] user ${user.id}: similar=${hits.length} recent=${jobs.length} already_matched=${existingIds.length}`);
+
+  const newJobs = jobs.filter((j) => !existingIds.includes(j.id));
+  if (!newJobs.length) {
+    console.log(`[match] all ${jobs.length} jobs already matched for user ${user.id}, skipping`);
+    return;
+  }
+
+  const input: UserMatchedJobPromptInput[] = newJobs.map((j) => ({
     jobId: j.id, jobTitle: j.title, jobLink: j.link, jobDescription: j.jobDesc, location: j.location, salary: j.salary,
   }));
 
