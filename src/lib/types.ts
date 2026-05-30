@@ -57,10 +57,6 @@ export interface UserMatchedJobPromptOutput {
   reason: string;
 }
 
-export interface PromptOutput {
-  matched_jobs: UserMatchedJobPromptOutput[];
-}
-
 export interface UserMatchedDetailJob extends JobDetail {
   userId: string;
   matchScore: string;

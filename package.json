@@ -12,10 +12,13 @@
     "migrate:init": "wrangler d1 execute jd-matcher-db --file ./migrations/001_initial.sql"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.67",
+    "ai": "^6.0.193",
     "cheerio": "^1.0.0",
     "fast-xml-parser": "^5.0.0",
     "grammy": "^1.35.0",
-    "hono": "^4.0.0"
+    "hono": "^4.0.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250301.0",

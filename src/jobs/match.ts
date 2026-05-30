@@ -3,7 +3,7 @@ import { getUsersWithResume } from "../lib/db/user_info.js";
 import { getJobDetailsByIds } from "../lib/db/job_detail.js";
 import { createMatchJobIfNotExist } from "../lib/db/user_matched_job.js";
 import { getVectorById, querySimilar } from "../lib/vectorize/index.js";
-import { deepseekChat, parseMatchResult, getJobMatchPromptTemplate, generateResumeMatchPrompt, serializeJobListToJson } from "../lib/llm/index.js";
+import { runMatchAgent } from "../lib/agent/index.js";
 
 function oneMonthAgo(): string {
   const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split("T")[0];
@@ -40,9 +40,15 @@ export async function handleMatch(env: Env, offset: number): Promise<void> {
     jobId: j.id, jobTitle: j.title, jobLink: j.link, jobDescription: j.jobDesc, location: j.location, salary: j.salary,
   }));
 
-  const prompt = generateResumeMatchPrompt(getJobMatchPromptTemplate(), user.resume ?? "", user.jobExpectations ?? "", serializeJobListToJson(input));
-  const result = await deepseekChat(env.LLM_DEEPSEEK_APIKEY, env.LLM_DEEPSEEK_BASEURL || "https://api.deepseek.com/v1", env.LLM_DEEPSEEK_MODEL || "deepseek-v4-flash", env.LLM_DEEPSEEK_REASONINGEFFORT || "high", prompt);
-  const parsed = parseMatchResult(result);
+  const parsed = await runMatchAgent({
+    resume: user.resume ?? "",
+    expectations: user.jobExpectations ?? "",
+    jobs: input,
+    apiKey: env.LLM_DEEPSEEK_APIKEY,
+    baseURL: env.LLM_DEEPSEEK_BASEURL || "https://api.deepseek.com/v1",
+    modelName: env.LLM_DEEPSEEK_MODEL || "deepseek-v4-flash",
+    reasoningEffort: env.LLM_DEEPSEEK_REASONINGEFFORT || "high",
+  });
 
   if (parsed.length) {
     await createMatchJobIfNotExist(env.DB, parsed.map((p) => ({ userId: user.id, jobId: p.jobId, notification: false, matchScore: p.matchScore, matchReason: p.reason })));
