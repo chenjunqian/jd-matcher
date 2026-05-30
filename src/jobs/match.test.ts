@@ -6,6 +6,7 @@ const {
   mockGetUsersWithResume,
   mockGetJobDetailsByIds,
   mockCreateMatchJobIfNotExist,
+  mockGetExistingMatchedJobIds,
   mockGetVectorById,
   mockQuerySimilar,
   mockRunMatchAgent,
@@ -13,6 +14,7 @@ const {
   mockGetUsersWithResume: vi.fn(),
   mockGetJobDetailsByIds: vi.fn(),
   mockCreateMatchJobIfNotExist: vi.fn(),
+  mockGetExistingMatchedJobIds: vi.fn(),
   mockGetVectorById: vi.fn(),
   mockQuerySimilar: vi.fn(),
   mockRunMatchAgent: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock("../lib/db/job_detail", () => ({
 
 vi.mock("../lib/db/user_matched_job", () => ({
   createMatchJobIfNotExist: mockCreateMatchJobIfNotExist,
+  getExistingMatchedJobIds: mockGetExistingMatchedJobIds,
 }));
 
 vi.mock("../lib/vectorize/index", () => ({
@@ -136,6 +139,7 @@ describe("handleMatch", () => {
     mockGetVectorById.mockResolvedValue([0.1, 0.2, 0.3]);
     mockQuerySimilar.mockResolvedValue([{ id: "job-1", score: 0.95 }]);
     mockGetJobDetailsByIds.mockResolvedValue([recentJob]);
+    mockGetExistingMatchedJobIds.mockResolvedValue([]);
     mockRunMatchAgent.mockResolvedValue([
       {
         jobId: "job-1",
@@ -166,6 +170,7 @@ describe("handleMatch", () => {
     mockGetVectorById.mockResolvedValue([0.1, 0.2, 0.3]);
     mockQuerySimilar.mockResolvedValue([{ id: "job-1", score: 0.95 }]);
     mockGetJobDetailsByIds.mockResolvedValue([recentJob]);
+    mockGetExistingMatchedJobIds.mockResolvedValue([]);
     mockRunMatchAgent.mockResolvedValue([
       {
         jobId: "job-1",
@@ -193,10 +198,61 @@ describe("handleMatch", () => {
     mockGetVectorById.mockResolvedValue([0.1, 0.2, 0.3]);
     mockQuerySimilar.mockResolvedValue([{ id: "job-1", score: 0.95 }]);
     mockGetJobDetailsByIds.mockResolvedValue([recentJob]);
+    mockGetExistingMatchedJobIds.mockResolvedValue([]);
     mockRunMatchAgent.mockResolvedValue([]);
 
     await handleMatch(makeEnv(), 0);
 
     expect(mockCreateMatchJobIfNotExist).not.toHaveBeenCalled();
+  });
+
+  it("skips runMatchAgent when all jobs are already matched", async () => {
+    mockGetUsersWithResume.mockResolvedValue([userWithResume]);
+    mockGetVectorById.mockResolvedValue([0.1, 0.2, 0.3]);
+    mockQuerySimilar.mockResolvedValue([{ id: "job-1", score: 0.95 }, { id: "job-2", score: 0.85 }]);
+    mockGetJobDetailsByIds.mockResolvedValue([
+      { ...recentJob, id: "job-1" },
+      { ...recentJob, id: "job-2", title: "Job 2" },
+    ]);
+    mockGetExistingMatchedJobIds.mockResolvedValue(["job-1", "job-2"]);
+
+    await handleMatch(makeEnv(), 0);
+
+    expect(mockRunMatchAgent).not.toHaveBeenCalled();
+    expect(mockCreateMatchJobIfNotExist).not.toHaveBeenCalled();
+  });
+
+  it("filters out already-matched jobs and only sends new ones to agent", async () => {
+    mockGetUsersWithResume.mockResolvedValue([userWithResume]);
+    mockGetVectorById.mockResolvedValue([0.1, 0.2, 0.3]);
+    mockQuerySimilar.mockResolvedValue([
+      { id: "job-1", score: 0.95 },
+      { id: "job-2", score: 0.85 },
+      { id: "job-3", score: 0.80 },
+    ]);
+    mockGetJobDetailsByIds.mockResolvedValue([
+      { ...recentJob, id: "job-1" },
+      { ...recentJob, id: "job-2", title: "Job 2" },
+      { ...recentJob, id: "job-3", title: "Job 3" },
+    ]);
+    mockGetExistingMatchedJobIds.mockResolvedValue(["job-1", "job-3"]);
+    mockRunMatchAgent.mockResolvedValue([
+      {
+        jobId: "job-2",
+        jobTitle: "Job 2",
+        jobLink: "https://example.com/job/1",
+        matchScore: "8",
+        reason: "Good match for job 2",
+      },
+    ]);
+
+    await handleMatch(makeEnv(), 0);
+
+    expect(mockGetExistingMatchedJobIds).toHaveBeenCalledWith({}, "user-1", ["job-1", "job-2", "job-3"]);
+    expect(mockRunMatchAgent).toHaveBeenCalledTimes(1);
+    const agentInput = mockRunMatchAgent.mock.calls[0][0];
+    expect(agentInput.jobs).toHaveLength(1);
+    expect(agentInput.jobs[0].jobId).toBe("job-2");
+    expect(mockCreateMatchJobIfNotExist).toHaveBeenCalledTimes(1);
   });
 });
