@@ -11,6 +11,7 @@
 - **Async jobs**: Cloudflare Queues
 - **Cron triggers**: Single hourly cron (`0 * * * *`), handler dispatches job types based on hour
 - **AI SDK**: Vercel AI SDK (`ai` + `@ai-sdk/openai`) for agent-based job matching
+- **Containers**: Cloudflare Containers (`@cloudflare/containers`) for running match agent workload
 - **Embeddings**: OpenRouter API (Qwen3 embedding model)
 - **LLM chat**: DeepSeek API via OpenAI-compatible endpoint
 
@@ -38,6 +39,9 @@
 │   │   └── vectorize/
 │   │       ├── index.ts       # Vectorize upsert/query helpers
 │   │       └── mock.ts        # Mock Vectorize for testing
+│   ├── container/
+│   │   ├── server.ts          # HTTP server wrapping runMatchAgent for Container runtime
+│   │   └── server.test.ts     # Integration tests for container server
 │   ├── bot/
 │   │   ├── bot.ts             # grammY setup + env middleware + command registration
 │   │   ├── session.ts         # KV-backed chat session (10min TTL)
@@ -67,6 +71,9 @@ Telegram  ──▶  Hono POST /telegram/webhook  ──▶  grammY bot  ──�
 Job match pipeline:
   Vectorize similar search  ──▶  filter recent + unmatched  ──▶  runMatchAgent (Vercel AI SDK)
   ──▶  tool calls: getPendingJobs / submitEvaluation  ──▶  store matches in user_matched_job
+
+MatchContainer (Cloudflare Containers):
+  Container class with HTTP server  ──▶  POST /match  ──▶  runMatchAgent  ──▶  results JSON
 ```
 
 ## Commands
@@ -113,6 +120,8 @@ npx wrangler deploy
 # 9. Set Telegram webhook
 curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://jd-matcher.<subdomain>.workers.dev/telegram/webhook"
 ```
+
+> Note: The MatchContainer uses Cloudflare Containers which require a Dockerfile. The container image is built and deployed automatically with `wrangler deploy`.
 
 ## Testing
 
