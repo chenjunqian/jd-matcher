@@ -1,1 +1,1 @@
-export { runMatchAgent } from "./match_agent.js";
+export { runMatchAgent, buildSystemPrompt } from "./match_agent.js";

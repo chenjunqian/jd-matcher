@@ -9,20 +9,35 @@
 - **Vector search**: Cloudflare Vectorize
 - **Session state**: Cloudflare KV
 - **Async jobs**: Cloudflare Queues
-- **Cron triggers**: 3 schedules, all enqueue to the job queue
+- **Cron triggers**: Single hourly cron (`0 * * * *`), handler dispatches job types based on hour
+- **AI SDK**: Vercel AI SDK (`ai` + `@ai-sdk/openai`) for agent-based job matching
+- **Embeddings**: OpenRouter API (Qwen3 embedding model)
+- **LLM chat**: DeepSeek API via OpenAI-compatible endpoint
 
 ## Project Structure
 
 ```
-├── wrangler.toml              # Single config — D1, KV, Vectorize, Queue, Cron
+├── wrangler.toml              # Config: D1, KV, Vectorize, Queue, Cron, observability
 ├── src/
 │   ├── index.ts               # Entry: Hono routes + scheduled() + queue()
 │   ├── lib/
 │   │   ├── types.ts           # All type definitions + Env bindings
+│   │   ├── config.ts          # Config helper reading env bindings
+│   │   ├── agent/
+│   │   │   ├── index.ts       # Re-exports
+│   │   │   ├── match_agent.ts # Vercel AI SDK agent: tool-based job matching (getPendingJobs / submitEvaluation)
+│   │   │   └── match_agent.test.ts
 │   │   ├── db/                # D1 CRUD (job_detail, user_info, user_matched_job)
-│   │   ├── llm/               # OpenRouter embeddings + DeepSeek chat + prompt
-│   │   ├── crawler/           # RemoteOK + WeWorkRemotely scrapers
-│   │   └── vectorize/         # Vectorize upsert/query helpers
+│   │   ├── llm/
+│   │   │   ├── index.ts       # Old LLM helpers (OpenRouter chat)
+│   │   │   └── embedding.ts   # OpenRouter embeddings
+│   │   ├── crawler/
+│   │   │   ├── index.ts       # Crawler registry
+│   │   │   ├── remote_ok.ts   # RemoteOK scraper
+│   │   │   └── weworkremotely.ts # WeWorkRemotely scraper
+│   │   └── vectorize/
+│   │       ├── index.ts       # Vectorize upsert/query helpers
+│   │       └── mock.ts        # Mock Vectorize for testing
 │   ├── bot/
 │   │   ├── bot.ts             # grammY setup + env middleware + command registration
 │   │   ├── session.ts         # KV-backed chat session (10min TTL)
@@ -31,8 +46,10 @@
 │   └── jobs/
 │       ├── crawl.ts           # Fetch jobs from RemoteOK + WeWorkRemotely
 │       ├── embed.ts           # Generate embeddings → store in Vectorize
-│       ├── match.ts           # Vector search → DeepSeek → store matches
-│       └── notify.ts          # Unnotified matches → Telegram API
+│       ├── match.ts           # Vector search → AI agent (Vercel AI SDK) → store matches
+│       ├── match.test.ts
+│       ├── notify.ts          # Unnotified matches → Telegram API
+│       └── notify.test.ts
 └── migrations/
     └── 001_initial.sql        # D1 schema
 ```
@@ -40,8 +57,16 @@
 ## Flow
 
 ```
-Cron        ──▶  scheduled()  ──▶  JOBS_QUEUE.send({type})  ──▶  queue() → dispatch
-Telegram    ──▶  Hono POST /webhook  ──▶  grammY bot  ──▶  command handlers
+Cron (hourly)               ──▶  scheduled()  ──▶  JOBS_QUEUE.send({type, offset})
+(crawl on even hours)       ──▶  JOBS_QUEUE.send({type: "crawl"})
+(embed every hour)          ──▶  JOBS_QUEUE.send({type: "embed"})
+(match/notify every 3 hrs)  ──▶  JOBS_QUEUE.send({type: "match", offset: i}) + notify
+
+Telegram  ──▶  Hono POST /telegram/webhook  ──▶  grammY bot  ──▶  command handlers
+
+Job match pipeline:
+  Vectorize similar search  ──▶  filter recent + unmatched  ──▶  runMatchAgent (Vercel AI SDK)
+  ──▶  tool calls: getPendingJobs / submitEvaluation  ──▶  store matches in user_matched_job
 ```
 
 ## Commands
@@ -88,3 +113,21 @@ npx wrangler deploy
 # 9. Set Telegram webhook
 curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://jd-matcher.<subdomain>.workers.dev/telegram/webhook"
 ```
+
+## Testing
+
+```bash
+npx vitest run            # Run all tests
+npx vitest run --reporter=verbose  # Verbose output
+```
+
+## Scripts
+
+| Script | Description |
+|---|---|
+| `npm run dev` | Start wrangler dev server |
+| `npm run dev:cron` | Dev server with test-scheduled flag |
+| `npm run dev:db` | Apply migration to local D1 |
+| `npm run deploy` | Deploy to Cloudflare |
+| `npm run test` | Run vitest tests |
+| `npm run typecheck` | TypeScript type check |
