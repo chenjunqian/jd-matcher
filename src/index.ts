@@ -11,7 +11,7 @@ import { getUsersWithResumeCount } from "./lib/db/user_info.js";
 
 export class MatchContainer extends Container {
   defaultPort = 3000;
-  sleepAfter = "10m";
+  sleepAfter = "20s";
 }
 
 const app = new Hono<{ Bindings: Env }>();

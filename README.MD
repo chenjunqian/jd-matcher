@@ -12,8 +12,8 @@ JD Matcher is an intelligent job matching tool that leverages Large Language Mod
 - 📱 **Telegram Bot Integration**: grammY-powered bot with pagination, file upload, and inline keyboards
 - 🕷️ **Automated Job Crawling**: Supports RemoteOK and WeWorkRemotely job sources with scheduled crawling
 - 🔔 **Smart Notifications**: Automatically notifies users when matching jobs are found
-- ⚡ **Cloud-Native**: Built on Cloudflare Workers with D1 database, Vectorize search, and Queue-based async jobs
-- 🚀 **Fully Serverless**: No infrastructure to manage, auto-scaling, pay-per-use
+- ⚡ **Cloud-Native**: Built on Cloudflare Workers with D1 database, Vectorize search, Queue-based async jobs, and Container-based agent runtime
+- 🚀 **Fully Serverless**: No infrastructure to manage, auto-scaling with Containers for long-running workloads
 
 ## 🏗️ Architecture
 
@@ -27,6 +27,9 @@ jd-matcher/
 │   │   ├── llm/               # OpenRouter embeddings + DeepSeek chat + prompt
 │   │   ├── crawler/           # RemoteOK + WeWorkRemotely scrapers
 │   │   └── vectorize/         # Vectorize upsert/query helpers
+│   ├── container/
+│   │   ├── server.ts          # HTTP server wrapping runMatchAgent for Container runtime
+│   │   └── server.test.ts     # Integration tests
 │   ├── bot/
 │   │   ├── bot.ts             # grammY setup + env middleware + command registration
 │   │   ├── session.ts         # KV-backed chat session (10min TTL)
@@ -35,7 +38,8 @@ jd-matcher/
 │   └── jobs/
 │       ├── crawl.ts           # Fetch jobs from RemoteOK + WeWorkRemotely
 │       ├── embed.ts           # Generate embeddings → store in Vectorize
-│       ├── match.ts           # Vector search → DeepSeek → store matches
+│       ├── match.ts           # Vector search → AI agent (Vercel AI SDK) → store matches
+│       ├── match.test.ts
 │       └── notify.ts          # Unnotified matches → Telegram API
 ├── migrations/
 │   └── 001_initial.sql        # D1 schema
@@ -48,7 +52,8 @@ jd-matcher/
 
 ```
 Cron        ──▶  scheduled()  ──▶  JOBS_QUEUE.send({type})  ──▶  queue() → dispatch
-Telegram    ──▶  Hono POST /webhook  ──▶  grammY bot  ──▶  command handlers
+Telegram    ──▶  Hono POST /telegram/webhook  ──▶  grammY bot  ──▶  command handlers
+Match agent ──▶  MatchContainer (Cloudflare Containers)  ──▶  runMatchAgent (Vercel AI SDK)
 ```
 
 ## 🚀 Quick Start
@@ -114,6 +119,8 @@ Telegram    ──▶  Hono POST /webhook  ──▶  grammY bot  ──▶  com
    npx wrangler deploy
    ```
 
+   > **Note**: The `MatchContainer` requires a Dockerfile at the project root. The container image is built and deployed automatically with `wrangler deploy`.
+
 6. **Set Telegram webhook**
 
    ```bash
@@ -149,7 +156,7 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-tu
 2. **Vector Embedding**: Resumes are converted to vector representations using OpenRouter embeddings
 3. **Job Crawling**: Cron triggers crawl jobs from RemoteOK and WeWorkRemotely every 2 hours
 4. **Embedding Generation**: New jobs are embedded via Queue consumer and stored in Vectorize
-5. **Matching**: Vector search finds similar jobs, then DeepSeek LLM performs semantic ranking
+5. **Matching**: Vector search finds similar jobs, then the AI agent (Vercel AI SDK) performs semantic ranking. The agent runs inside Cloudflare Containers (`MatchContainer`) to support long-running LLM calls.
 6. **Notifications**: Users are notified when matching jobs are found
 
 ## 🛠️ Development
@@ -157,10 +164,11 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-tu
 ### Key Commands
 
 ```bash
-npm run dev              # Start local dev server
+npm run dev              # Start wrangler dev server
+npm run dev:cron         # Dev server with test-scheduled flag
 npm run deploy           # Deploy to Cloudflare Workers
-npx wrangler tail        # Tail production logs
-npx tsc --noEmit         # Type-check
+npm run test             # Run vitest tests
+npm run typecheck        # TypeScript type check
 ```
 
 ### Adding New Job Sources
@@ -184,12 +192,11 @@ npx tsc --noEmit         # Type-check
 ## 🧪 Testing
 
 ```bash
-# Type checking
-npx tsc --noEmit
+npx vitest run            # Run all tests
+npx vitest run --reporter=verbose  # Verbose output
 
-# Local testing with wrangler
-npx wrangler dev --test-scheduled
-curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"
+# Type checking
+npm run typecheck
 ```
 
 ## 📊 Configuration
