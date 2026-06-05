@@ -69,6 +69,7 @@ export interface Env {
   JOB_DESC_EMBEDDINGS: VectorizeIndex;
   RESUME_EMBEDDINGS: VectorizeIndex;
   JOBS_QUEUE: Queue<JobMessage>;
+  MATCH_CONTAINER: DurableObjectNamespace<import("@cloudflare/containers").Container>;
   TELEGRAM_BOT_TOKEN: string;
   LLM_OPENROUTER_BASEURL: string;
   LLM_OPENROUTER_APIKEY: string;

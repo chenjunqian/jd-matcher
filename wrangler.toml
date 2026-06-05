@@ -32,6 +32,19 @@ max_retries = 3
 [triggers]
 crons = ["0 * * * *"]
 
+[[containers]]
+class_name = "MatchContainer"
+image = "./Dockerfile"
+max_instances = 3
+
+[[durable_objects.bindings]]
+class_name = "MatchContainer"
+name = "MATCH_CONTAINER"
+
+[[migrations]]
+new_sqlite_classes = ["MatchContainer"]
+tag = "v2"
+
 [vars]
 LLM_OPENROUTER_BASEURL = "https://openrouter.ai/api/v1"
 LLM_OPENROUTER_MODEL = "gpt-4o-mini"
