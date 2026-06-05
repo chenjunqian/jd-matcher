@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { webhookCallback } from "grammy";
+import { Container } from "@cloudflare/containers";
 import type { Env, JobMessage } from "./lib/types.js";
 import { createBot } from "./bot/bot.js";
 import { handleCrawl } from "./jobs/crawl.js";
@@ -7,6 +8,11 @@ import { handleEmbed } from "./jobs/embed.js";
 import { handleMatch } from "./jobs/match.js";
 import { handleNotify } from "./jobs/notify.js";
 import { getUsersWithResumeCount } from "./lib/db/user_info.js";
+
+export class MatchContainer extends Container {
+  defaultPort = 3000;
+  sleepAfter = "10m";
+}
 
 const app = new Hono<{ Bindings: Env }>();
 

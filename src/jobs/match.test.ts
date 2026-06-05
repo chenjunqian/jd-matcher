@@ -9,7 +9,7 @@ const {
   mockGetExistingMatchedJobIds,
   mockGetVectorById,
   mockQuerySimilar,
-  mockRunMatchAgent,
+  mockCallAgent,
 } = vi.hoisted(() => ({
   mockGetUsersWithResume: vi.fn(),
   mockGetJobDetailsByIds: vi.fn(),
@@ -17,7 +17,7 @@ const {
   mockGetExistingMatchedJobIds: vi.fn(),
   mockGetVectorById: vi.fn(),
   mockQuerySimilar: vi.fn(),
-  mockRunMatchAgent: vi.fn(),
+  mockCallAgent: vi.fn(),
 }));
 
 vi.mock("../lib/db/user_info", () => ({
@@ -38,8 +38,8 @@ vi.mock("../lib/vectorize/index", () => ({
   querySimilar: mockQuerySimilar,
 }));
 
-vi.mock("../lib/agent/index", () => ({
-  runMatchAgent: mockRunMatchAgent,
+vi.mock("./agent_client", () => ({
+  callAgent: mockCallAgent,
 }));
 
 function makeEnv(): Env {
@@ -50,6 +50,7 @@ function makeEnv(): Env {
     JOB_DESC_EMBEDDINGS: {} as VectorizeIndex,
     RESUME_EMBEDDINGS: {} as VectorizeIndex,
     JOBS_QUEUE: {} as Queue<{ type: string }>,
+    MATCH_CONTAINER: {} as DurableObjectNamespace<import("@cloudflare/containers").Container>,
     LLM_OPENROUTER_BASEURL: "",
     LLM_OPENROUTER_APIKEY: "",
     LLM_OPENROUTER_MODEL: "",
@@ -94,7 +95,7 @@ describe("handleMatch", () => {
 
     expect(mockGetUsersWithResume).toHaveBeenCalledTimes(1);
     expect(mockGetVectorById).not.toHaveBeenCalled();
-    expect(mockRunMatchAgent).not.toHaveBeenCalled();
+    expect(mockCallAgent).not.toHaveBeenCalled();
   });
 
   it("logs and returns when no vector found for user", async () => {
@@ -105,7 +106,7 @@ describe("handleMatch", () => {
 
     expect(mockGetVectorById).toHaveBeenCalledWith({}, "vec-user-1");
     expect(mockQuerySimilar).not.toHaveBeenCalled();
-    expect(mockRunMatchAgent).not.toHaveBeenCalled();
+    expect(mockCallAgent).not.toHaveBeenCalled();
   });
 
   it("logs and returns when no similar jobs found", async () => {
@@ -117,7 +118,7 @@ describe("handleMatch", () => {
 
     expect(mockQuerySimilar).toHaveBeenCalledWith({}, [0.1, 0.2, 0.3], 30);
     expect(mockGetJobDetailsByIds).not.toHaveBeenCalled();
-    expect(mockRunMatchAgent).not.toHaveBeenCalled();
+    expect(mockCallAgent).not.toHaveBeenCalled();
   });
 
   it("logs and returns when no recent jobs (all older than 1 month)", async () => {
@@ -131,7 +132,7 @@ describe("handleMatch", () => {
     await handleMatch(makeEnv(), 0);
 
     expect(mockGetJobDetailsByIds).toHaveBeenCalledWith({}, ["job-1"]);
-    expect(mockRunMatchAgent).not.toHaveBeenCalled();
+    expect(mockCallAgent).not.toHaveBeenCalled();
   });
 
   it("calls runMatchAgent with correct inputs for matching jobs", async () => {
@@ -140,7 +141,7 @@ describe("handleMatch", () => {
     mockQuerySimilar.mockResolvedValue([{ id: "job-1", score: 0.95 }]);
     mockGetJobDetailsByIds.mockResolvedValue([recentJob]);
     mockGetExistingMatchedJobIds.mockResolvedValue([]);
-    mockRunMatchAgent.mockResolvedValue([
+    mockCallAgent.mockResolvedValue([
       {
         jobId: "job-1",
         jobTitle: "Senior TypeScript Dev",
@@ -152,17 +153,17 @@ describe("handleMatch", () => {
 
     await handleMatch(makeEnv(), 0);
 
-    expect(mockRunMatchAgent).toHaveBeenCalledTimes(1);
-    const agentInput = mockRunMatchAgent.mock.calls[0][0];
-    expect(agentInput.resume).toBe("TypeScript developer resume content");
-    expect(agentInput.expectations).toBe("Remote only, $120k minimum");
-    expect(agentInput.jobs).toHaveLength(1);
-    expect(agentInput.jobs[0].jobId).toBe("job-1");
-    expect(agentInput.jobs[0].jobTitle).toBe("Senior TypeScript Dev");
-    expect(agentInput.jobs[0].jobLink).toBe("https://example.com/job/1");
-    expect(agentInput.jobs[0].location).toBe("Remote");
-    expect(agentInput.jobs[0].salary).toBe("$120k-$160k");
-    expect(agentInput.jobs[0].jobDescription).toBe("Looking for a senior developer with TS experience.");
+    expect(mockCallAgent).toHaveBeenCalledTimes(1);
+    const callArgs = mockCallAgent.mock.calls[0];
+    expect(callArgs[1]).toBe("TypeScript developer resume content");
+    expect(callArgs[2]).toBe("Remote only, $120k minimum");
+    expect(callArgs[3]).toHaveLength(1);
+    expect(callArgs[3][0].jobId).toBe("job-1");
+    expect(callArgs[3][0].jobTitle).toBe("Senior TypeScript Dev");
+    expect(callArgs[3][0].jobLink).toBe("https://example.com/job/1");
+    expect(callArgs[3][0].location).toBe("Remote");
+    expect(callArgs[3][0].salary).toBe("$120k-$160k");
+    expect(callArgs[3][0].jobDescription).toBe("Looking for a senior developer with TS experience.");
   });
 
   it("stores matched jobs via createMatchJobIfNotExist", async () => {
@@ -171,7 +172,7 @@ describe("handleMatch", () => {
     mockQuerySimilar.mockResolvedValue([{ id: "job-1", score: 0.95 }]);
     mockGetJobDetailsByIds.mockResolvedValue([recentJob]);
     mockGetExistingMatchedJobIds.mockResolvedValue([]);
-    mockRunMatchAgent.mockResolvedValue([
+    mockCallAgent.mockResolvedValue([
       {
         jobId: "job-1",
         jobTitle: "Senior TypeScript Dev",
@@ -199,7 +200,7 @@ describe("handleMatch", () => {
     mockQuerySimilar.mockResolvedValue([{ id: "job-1", score: 0.95 }]);
     mockGetJobDetailsByIds.mockResolvedValue([recentJob]);
     mockGetExistingMatchedJobIds.mockResolvedValue([]);
-    mockRunMatchAgent.mockResolvedValue([]);
+    mockCallAgent.mockResolvedValue([]);
 
     await handleMatch(makeEnv(), 0);
 
@@ -218,7 +219,7 @@ describe("handleMatch", () => {
 
     await handleMatch(makeEnv(), 0);
 
-    expect(mockRunMatchAgent).not.toHaveBeenCalled();
+    expect(mockCallAgent).not.toHaveBeenCalled();
     expect(mockCreateMatchJobIfNotExist).not.toHaveBeenCalled();
   });
 
@@ -236,7 +237,7 @@ describe("handleMatch", () => {
       { ...recentJob, id: "job-3", title: "Job 3" },
     ]);
     mockGetExistingMatchedJobIds.mockResolvedValue(["job-1", "job-3"]);
-    mockRunMatchAgent.mockResolvedValue([
+    mockCallAgent.mockResolvedValue([
       {
         jobId: "job-2",
         jobTitle: "Job 2",
@@ -249,10 +250,10 @@ describe("handleMatch", () => {
     await handleMatch(makeEnv(), 0);
 
     expect(mockGetExistingMatchedJobIds).toHaveBeenCalledWith({}, "user-1", ["job-1", "job-2", "job-3"]);
-    expect(mockRunMatchAgent).toHaveBeenCalledTimes(1);
-    const agentInput = mockRunMatchAgent.mock.calls[0][0];
-    expect(agentInput.jobs).toHaveLength(1);
-    expect(agentInput.jobs[0].jobId).toBe("job-2");
+    expect(mockCallAgent).toHaveBeenCalledTimes(1);
+    const callArgs = mockCallAgent.mock.calls[0];
+    expect(callArgs[3]).toHaveLength(1);
+    expect(callArgs[3][0].jobId).toBe("job-2");
     expect(mockCreateMatchJobIfNotExist).toHaveBeenCalledTimes(1);
   });
 });

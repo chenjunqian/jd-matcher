@@ -28,6 +28,7 @@ function makeEnv(): Env {
     JOB_DESC_EMBEDDINGS: {} as VectorizeIndex,
     RESUME_EMBEDDINGS: {} as VectorizeIndex,
     JOBS_QUEUE: {} as Queue<{ type: string }>,
+    MATCH_CONTAINER: {} as DurableObjectNamespace<import("@cloudflare/containers").Container>,
     LLM_OPENROUTER_BASEURL: "",
     LLM_OPENROUTER_APIKEY: "",
     LLM_OPENROUTER_MODEL: "",

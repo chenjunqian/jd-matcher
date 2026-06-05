@@ -3,7 +3,7 @@ import { getUsersWithResume } from "../lib/db/user_info.js";
 import { getJobDetailsByIds } from "../lib/db/job_detail.js";
 import { createMatchJobIfNotExist, getExistingMatchedJobIds } from "../lib/db/user_matched_job.js";
 import { getVectorById, querySimilar } from "../lib/vectorize/index.js";
-import { runMatchAgent } from "../lib/agent/index.js";
+import { callAgent } from "./agent_client.js";
 
 function oneMonthAgo(): string {
   const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split("T")[0];
@@ -49,15 +49,12 @@ export async function handleMatch(env: Env, offset: number): Promise<void> {
     jobId: j.id, jobTitle: j.title, jobLink: j.link, jobDescription: j.jobDesc, location: j.location, salary: j.salary,
   }));
 
-  const parsed = await runMatchAgent({
-    resume: user.resume ?? "",
-    expectations: user.jobExpectations ?? "",
-    jobs: input,
-    apiKey: env.LLM_DEEPSEEK_APIKEY,
-    baseURL: env.LLM_DEEPSEEK_BASEURL || "https://api.deepseek.com/v1",
-    modelName: env.LLM_DEEPSEEK_MODEL || "deepseek-v4-flash",
-    reasoningEffort: env.LLM_DEEPSEEK_REASONINGEFFORT || "high",
-  });
+  const parsed = await callAgent(
+    env,
+    user.resume ?? "",
+    user.jobExpectations ?? "",
+    input,
+  );
 
   if (parsed.length) {
     await createMatchJobIfNotExist(env.DB, parsed.map((p) => ({ userId: user.id, jobId: p.jobId, notification: false, matchScore: p.matchScore, matchReason: p.reason })));
