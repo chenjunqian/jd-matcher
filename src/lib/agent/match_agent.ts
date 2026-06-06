@@ -82,6 +82,10 @@ export async function runMatchAgent(input: RunMatchAgentInput): Promise<UserMatc
             if (results.has(jobId)) {
               return { error: `Job ${jobId} was already evaluated.` };
             }
+            const score = Number(matchScore);
+            if (isNaN(score) || score < 6) {
+              return { error: `Score ${matchScore} is below threshold 6. Do not submit.` };
+            }
             results.set(jobId, { matchScore, reason });
             return { ok: true, totalEvaluated: results.size };
           },
@@ -147,5 +151,9 @@ ${expectationsHeader}
    c. **SUBMIT**: Only call submitEvaluation if score >= 6. Include a concise one-sentence reason.
 
 3. Call getPendingJobs again. Repeat until all jobs are evaluated.
-4. When all jobs are done, respond briefly.`;
+4. **REVIEW**: After all jobs are evaluated, review every submitted evaluation:
+   - If any job's score is < 6, you made a mistake — that job should NOT have been submitted.
+   - If any job violates a candidate expectation (e.g. wrong location, wrong job type), you made a mistake — it should NOT have been submitted.
+   - If you find mistakes, admit them and stop; do NOT submit further.
+5. When all done and verified, respond briefly.`;
 }

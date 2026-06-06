@@ -68,6 +68,15 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("getPendingJobs");
     expect(prompt).toContain("submitEvaluation");
   });
+
+  it("includes REVIEW step at end of workflow", () => {
+    const prompt = buildSystemPrompt("Resume", "Expectations");
+
+    expect(prompt).toContain("REVIEW");
+    expect(prompt).toContain("score is < 6");
+    expect(prompt).toContain("violates a candidate expectation");
+    expect(prompt).toContain("you made a mistake");
+  });
 });
 
 describe("runMatchAgent", () => {
@@ -226,6 +235,71 @@ describe("runMatchAgent", () => {
     expect(callArgs.tools.getPendingJobs).toBeDefined();
     expect(callArgs.tools.submitEvaluation).toBeDefined();
     expect(callArgs.providerOptions.openai.reasoningEffort).toBe("high");
+  });
+
+  it("rejects evaluation for score below 6", async () => {
+    const jobs = makeJobs(1);
+
+    mockGenerateText.mockImplementation(async (params: any) => {
+      const { tools } = params;
+      const batch: any = await tools.getPendingJobs.execute({ batchSize: 1 });
+      expect(batch.done).toBe(false);
+
+      const result: any = await tools.submitEvaluation.execute({
+        jobId: batch.jobs[0].jobId,
+        matchScore: "3",
+        reason: "Not a good match",
+      });
+      expect(result.error).toContain("below threshold");
+      return { text: "Done." };
+    });
+
+    const result = await runMatchAgent(baseInput(jobs));
+
+    expect(result).toHaveLength(0);
+  });
+
+  it("rejects evaluation for non-numeric score", async () => {
+    const jobs = makeJobs(1);
+
+    mockGenerateText.mockImplementation(async (params: any) => {
+      const { tools } = params;
+      const batch: any = await tools.getPendingJobs.execute({ batchSize: 1 });
+
+      const result: any = await tools.submitEvaluation.execute({
+        jobId: batch.jobs[0].jobId,
+        matchScore: "n/a",
+        reason: "Bad score",
+      });
+      expect(result.error).toContain("below threshold");
+      return { text: "Done." };
+    });
+
+    const result = await runMatchAgent(baseInput(jobs));
+
+    expect(result).toHaveLength(0);
+  });
+
+  it("accepts evaluation for score exactly 6", async () => {
+    const jobs = makeJobs(1);
+
+    mockGenerateText.mockImplementation(async (params: any) => {
+      const { tools } = params;
+      const batch: any = await tools.getPendingJobs.execute({ batchSize: 1 });
+
+      const result: any = await tools.submitEvaluation.execute({
+        jobId: batch.jobs[0].jobId,
+        matchScore: "6",
+        reason: "Barely passes",
+      });
+      expect(result.ok).toBe(true);
+      return { text: "Done." };
+    });
+
+    const result = await runMatchAgent(baseInput(jobs));
+
+    expect(result).toHaveLength(1);
+    expect(result[0].matchScore).toBe("6");
   });
 
   it("returns partial results when generateText throws mid-process", async () => {

@@ -223,6 +223,29 @@ describe("handleMatch", () => {
     expect(mockCreateMatchJobIfNotExist).not.toHaveBeenCalled();
   });
 
+  it("filters out agent results with score below 6", async () => {
+    mockGetUsersWithResume.mockResolvedValue([userWithResume]);
+    mockGetVectorById.mockResolvedValue([0.1, 0.2, 0.3]);
+    mockQuerySimilar.mockResolvedValue([{ id: "job-1", score: 0.95 }, { id: "job-2", score: 0.85 }]);
+    mockGetJobDetailsByIds.mockResolvedValue([
+      { ...recentJob, id: "job-1" },
+      { ...recentJob, id: "job-2", title: "Job 2" },
+    ]);
+    mockGetExistingMatchedJobIds.mockResolvedValue([]);
+    mockCallAgent.mockResolvedValue([
+      { jobId: "job-1", jobTitle: "Job 1", jobLink: "https://example.com/job/1", matchScore: "3", reason: "Low" },
+      { jobId: "job-2", jobTitle: "Job 2", jobLink: "https://example.com/job/1", matchScore: "8", reason: "Good" },
+    ]);
+
+    await handleMatch(makeEnv(), 0);
+
+    expect(mockCreateMatchJobIfNotExist).toHaveBeenCalledTimes(1);
+    const storedMatches = mockCreateMatchJobIfNotExist.mock.calls[0][1];
+    expect(storedMatches).toHaveLength(1);
+    expect(storedMatches[0].jobId).toBe("job-2");
+    expect(storedMatches[0].matchScore).toBe("8");
+  });
+
   it("filters out already-matched jobs and only sends new ones to agent", async () => {
     mockGetUsersWithResume.mockResolvedValue([userWithResume]);
     mockGetVectorById.mockResolvedValue([0.1, 0.2, 0.3]);
