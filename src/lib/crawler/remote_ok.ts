@@ -32,13 +32,22 @@ export function parseRemoteOkMainPageJobs(htmlStr: string): CommonJob[] {
       const desc = htmlDiv.length ? htmlDiv.text() : mdDiv.length ? mdDiv.text() : "";
 
       const locDivs = header.find("div.location");
+      const salaryDiv = header.find("div.salary");
+
       const locs: string[] = [];
-      let salary = "";
-      locDivs.each((i, e) => {
+      locDivs.each((_i, e) => {
         const t = $(e).text().trim();
-        if (i === locDivs.length - 1) salary = t;
-        else locs.push(t);
+        if (!t) return;
+        if (/^⏰\s/.test(t)) return; // employment type (Part time, Full time, Contractor)
+        if (t.includes("Upgrade to Premium")) return; // "💰 Upgrade to Premium to see salary"
+        locs.push(t);
       });
+
+      let salary = salaryDiv.length ? salaryDiv.text().trim() : "";
+      if (!salary) {
+        const premium = header.find("div.location").filter((_i, e) => $(e).text().includes("Upgrade to Premium"));
+        if (premium.length) salary = premium.text().trim();
+      }
 
       const time = header.find("time").attr("datetime") ?? "";
       const tags: string[] = [];

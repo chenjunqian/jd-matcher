@@ -57,7 +57,12 @@ export async function handleMatch(env: Env, offset: number): Promise<void> {
   );
 
   if (parsed.length) {
-    await createMatchJobIfNotExist(env.DB, parsed.map((p) => ({ userId: user.id, jobId: p.jobId, notification: false, matchScore: p.matchScore, matchReason: p.reason })));
-    console.log(`[match] stored ${parsed.length} matches for user ${user.id}`);
+    const validMatches = parsed.filter((p) => Number(p.matchScore) >= 6);
+    if (validMatches.length) {
+      await createMatchJobIfNotExist(env.DB, validMatches.map((p) => ({ userId: user.id, jobId: p.jobId, notification: false, matchScore: p.matchScore, matchReason: p.reason })));
+      console.log(`[match] stored ${validMatches.length} matches for user ${user.id} (${parsed.length - validMatches.length} filtered low-score)`);
+    } else {
+      console.log(`[match] all ${parsed.length} results filtered (score < 6) for user ${user.id}`);
+    }
   }
 }
