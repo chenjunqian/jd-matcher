@@ -14,6 +14,7 @@
 - **Containers**: Cloudflare Containers (`@cloudflare/containers`) for running match agent workload
 - **Embeddings**: OpenRouter API (Qwen3 embedding model)
 - **LLM chat**: DeepSeek API via OpenAI-compatible endpoint
+- **Email**: Cloudflare Email Service (`send_email` binding)
 
 ## Project Structure
 
@@ -28,7 +29,7 @@
 │   │   │   ├── index.ts       # Re-exports
 │   │   │   ├── match_agent.ts # Vercel AI SDK agent: tool-based job matching (getPendingJobs / submitEvaluation)
 │   │   │   └── match_agent.test.ts
-│   │   ├── db/                # D1 CRUD (job_detail, user_info, user_matched_job)
+│   │   ├── db/                # D1 CRUD (job_detail, user_info, user_matched_job, email_verification)
 │   │   ├── llm/
 │   │   │   ├── index.ts       # Old LLM helpers (OpenRouter chat)
 │   │   │   └── embedding.ts   # OpenRouter embeddings
@@ -36,6 +37,8 @@
 │   │   │   ├── index.ts       # Crawler registry
 │   │   │   ├── remote_ok.ts   # RemoteOK scraper
 │   │   │   └── weworkremotely.ts # WeWorkRemotely scraper
+│   │   ├── email/
+│   │   │   └── template.ts    # Email HTML/text templates
 │   │   └── vectorize/
 │   │       ├── index.ts       # Vectorize upsert/query helpers
 │   │       └── mock.ts        # Mock Vectorize for testing
@@ -68,9 +71,15 @@ Cron (hourly)               ──▶  scheduled()  ──▶  JOBS_QUEUE.send({
 
 Telegram  ──▶  Hono POST /telegram/webhook  ──▶  grammY bot  ──▶  command handlers
 
-Job match pipeline:
-  Vectorize similar search  ──▶  filter recent + unmatched  ──▶  runMatchAgent (Vercel AI SDK)
-  ──▶  tool calls: getPendingJobs / submitEvaluation  ──▶  store matches in user_matched_job
+Email verification:
+  /email ──▶  prompt for address ──▶  create token in email_verification table
+  ──▶  send verification email via Cloudflare Email Service
+  ──▶  user clicks link ──▶  GET /verify-email?token=... ──▶  mark verified + update user_info.email
+
+Email notification (in notify.ts):
+  handleNotify ──▶  for each user with non-notified matches:
+    ──▶  send Telegram message (if telegramId exists)
+    ──▶  send email notification (if email is set)
 
 MatchContainer (Cloudflare Containers):
   Container class with HTTP server  ──▶  POST /match  ──▶  runMatchAgent  ──▶  results JSON
@@ -86,6 +95,7 @@ MatchContainer (Cloudflare Containers):
 | `/jobs` | Browse your matched jobs (paginated) |
 | `/upload_resume` | Upload your resume (text file) |
 | `/expectation` | Set job expectations |
+| `/email` | Set email address and verify for notifications |
 
 ## Deployment
 
@@ -114,10 +124,13 @@ npx wrangler secret put TELEGRAM_BOT_TOKEN
 npx wrangler secret put LLM_OPENROUTER_APIKEY
 npx wrangler secret put LLM_DEEPSEEK_APIKEY
 
-# 8. Deploy
+# 8. Run email verification migration
+npx wrangler d1 execute jd-matcher-db --file migrations/002_email_verification.sql
+
+# 9. Deploy
 npx wrangler deploy
 
-# 9. Set Telegram webhook
+# 10. Set Telegram webhook
 curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://jd-matcher.<subdomain>.workers.dev/telegram/webhook"
 ```
 
