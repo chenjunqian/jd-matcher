@@ -5,6 +5,7 @@ import {
   getUserNonNotifiedJobList,
   updateMatchJobsNotifiedByIds,
 } from "../lib/db/user_matched_job.js";
+import { buildJobNotificationHtml, buildJobNotificationText } from "../lib/email/template.js";
 
 function buildMessage(jobs: UserMatchedDetailJob[]): string {
   let msg = "You have new matched jobs, please check.\n\n";
@@ -59,6 +60,17 @@ export async function sendJobsInChunks(env: Env, telegramId: string, jobs: UserM
   }
 }
 
+async function sendEmailNotification(env: Env, email: string, jobs: UserMatchedDetailJob[], userId: string): Promise<void> {
+  await env.EMAIL.send({
+    to: email,
+    from: { email: "jdmatcher@guoshaotech.com", name: "JD Matcher" },
+    subject: "New Job Matches for You",
+    html: buildJobNotificationHtml(jobs),
+    text: buildJobNotificationText(jobs),
+  });
+  await updateMatchJobsNotifiedByIds(env.DB, userId, jobs.map(j => j.id));
+}
+
 export async function handleNotify(env: Env): Promise<void> {
   const LOCK_KEY = "notify-last-run";
   const LOCK_TTL = 60;
@@ -78,15 +90,20 @@ export async function handleNotify(env: Env): Promise<void> {
     for (let off = 0; off < total; off += BATCH) {
       const users = await getUserInfoList(env.DB, off, BATCH);
       for (const u of users) {
-        if (!u.telegramId) continue;
+        if (!u.telegramId && !u.email) continue;
         try {
           const cnt = await getUserNonNotifiedJobTotalCount(env.DB, u.id);
           if (!cnt) continue;
           const jobs = await getUserNonNotifiedJobList(env.DB, u.id, 0, 10);
           if (!jobs.length) continue;
 
-          await sendJobsInChunks(env, u.telegramId, jobs, u.id);
-          console.log(`[notify] notified user ${u.id} (${u.telegramId})`);
+          if (u.telegramId) {
+            await sendJobsInChunks(env, u.telegramId, jobs, u.id);
+          }
+          if (u.email) {
+            await sendEmailNotification(env, u.email, jobs, u.id);
+          }
+          console.log(`[notify] notified user ${u.id} (tg:${u.telegramId ?? "none"} email:${u.email ?? "none"})`);
         } catch (e) { console.error(`[notify] failed for user ${u.id}:`, e); }
       }
     }

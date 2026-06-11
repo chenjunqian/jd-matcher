@@ -18,6 +18,11 @@ export async function createUserInfoIfNotExist(db: D1Database, user: UserInfo): 
     .run();
 }
 
+export async function getUserInfoById(db: D1Database, id: string): Promise<UserInfo | null> {
+  const row = await db.prepare("SELECT * FROM user_info WHERE id = ?").bind(id).first<Record<string, unknown>>();
+  return row ? mapRow(row) : null;
+}
+
 export async function getUserInfoByTelegramId(db: D1Database, telegramId: string): Promise<UserInfo | null> {
   const row = await db.prepare("SELECT * FROM user_info WHERE telegram_id = ?").bind(telegramId).first<Record<string, unknown>>();
   return row ? mapRow(row) : null;
@@ -34,6 +39,10 @@ export async function updateUserResume(db: D1Database, telegramId: string, resum
   } else {
     await db.prepare("UPDATE user_info SET resume=? WHERE telegram_id=?").bind(resume, telegramId).run();
   }
+}
+
+export async function updateUserEmail(db: D1Database, userId: string, email: string): Promise<void> {
+  await db.prepare("UPDATE user_info SET email=? WHERE id=?").bind(email, userId).run();
 }
 
 export async function updateUserJobExpectations(db: D1Database, telegramId: string, expectations: string): Promise<void> {
