@@ -1,6 +1,7 @@
 export interface ChatSession {
   lastBotMessage?: string;
   awaitingUpload?: boolean;
+  awaitingEmail?: boolean;
 }
 
 const TTL = 600;

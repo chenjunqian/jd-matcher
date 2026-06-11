@@ -1,7 +1,7 @@
 import { Bot, Context } from "grammy";
 import type { Env } from "../lib/types.js";
 import { getSession } from "./session.js";
-import { startCommandHandler, helpCommandHandler, allJobsCommandHandler, allJobsCallbackHandler, jobsCommandHandler, jobsCallbackHandler, uploadResumeCommandHandler, uploadResumeFileHandler, expectationCommandHandler, expectationTextHandler } from "./handlers/index.js";
+import { startCommandHandler, helpCommandHandler, allJobsCommandHandler, allJobsCallbackHandler, jobsCommandHandler, jobsCallbackHandler, uploadResumeCommandHandler, uploadResumeFileHandler, expectationCommandHandler, expectationTextHandler, emailCommandHandler, emailTextHandler } from "./handlers/index.js";
 
 export interface BotContext extends Context {
   env: Env;
@@ -17,6 +17,7 @@ export function createBot(token: string, env: Env): Bot<BotContext> {
   bot.command("jobs", jobsCommandHandler);
   bot.command("upload_resume", uploadResumeCommandHandler);
   bot.command("expectation", expectationCommandHandler);
+  bot.command("email", emailCommandHandler);
 
   bot.callbackQuery(/^all_jobs_callback_data_/, allJobsCallbackHandler);
   bot.callbackQuery(/^matched_jobs_callback_data_/, jobsCallbackHandler);
@@ -25,6 +26,7 @@ export function createBot(token: string, env: Env): Bot<BotContext> {
   bot.on(":text", async (ctx) => {
     const s = await getSession(env.SESSION_KV, ctx.chat.id);
     if (s.awaitingUpload) return void await ctx.reply("Please upload your resume as a text file.");
+    if (s.awaitingEmail) return void await emailTextHandler(ctx);
     const last = s.lastBotMessage;
     if (last && (last.startsWith("Your current expectations:") || last.startsWith("Please enter your job expectations")))
       return void await expectationTextHandler(ctx);

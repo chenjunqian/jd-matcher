@@ -11,7 +11,8 @@ JD Matcher is an intelligent job matching tool that leverages Large Language Mod
 - 🤖 **Intelligent Matching**: Uses LLM-based embeddings (OpenRouter) for vector representations and DeepSeek for semantic matching
 - 📱 **Telegram Bot Integration**: grammY-powered bot with pagination, file upload, and inline keyboards
 - 🕷️ **Automated Job Crawling**: Supports RemoteOK and WeWorkRemotely job sources with scheduled crawling
-- 🔔 **Smart Notifications**: Automatically notifies users when matching jobs are found
+- 🔔 **Smart Notifications**: Automatically notifies users when matching jobs are found via Telegram and email
+- 📧 **Email Verification**: Users can set and verify their email for email-based job notifications
 - ⚡ **Cloud-Native**: Built on Cloudflare Workers with D1 database, Vectorize search, Queue-based async jobs, and Container-based agent runtime
 - 🚀 **Fully Serverless**: No infrastructure to manage, auto-scaling with Containers for long-running workloads
 
@@ -23,9 +24,10 @@ jd-matcher/
 │   ├── index.ts               # Entry: Hono routes + scheduled() + queue()
 │   ├── lib/
 │   │   ├── types.ts           # All type definitions + Env bindings
-│   │   ├── db/                # D1 CRUD (job_detail, user_info, user_matched_job)
+│   │   ├── db/                # D1 CRUD (job_detail, user_info, user_matched_job, email_verification)
 │   │   ├── llm/               # OpenRouter embeddings + DeepSeek chat + prompt
 │   │   ├── crawler/           # RemoteOK + WeWorkRemotely scrapers
+│   │   ├── email/             # Email HTML/text templates
 │   │   └── vectorize/         # Vectorize upsert/query helpers
 │   ├── container/
 │   │   ├── server.ts          # HTTP server wrapping runMatchAgent for Container runtime
@@ -40,9 +42,10 @@ jd-matcher/
 │       ├── embed.ts           # Generate embeddings → store in Vectorize
 │       ├── match.ts           # Vector search → AI agent (Vercel AI SDK) → store matches
 │       ├── match.test.ts
-│       └── notify.ts          # Unnotified matches → Telegram API
+│       └── notify.ts          # Unnotified matches → Telegram + email
 ├── migrations/
-│   └── 001_initial.sql        # D1 schema
+│   ├── 001_initial.sql        # D1 schema
+│   └── 002_email_verification.sql  # Email verification table
 ├── wrangler.toml              # Single config — D1, KV, Vectorize, Queue, Cron
 ├── package.json
 └── tsconfig.json
@@ -92,6 +95,9 @@ Match agent ──▶  MatchContainer (Cloudflare Containers)  ──▶  runMat
 
    # Run migration
    npx wrangler d1 execute jd-matcher-db --file migrations/001_initial.sql
+
+   # Run email verification migration
+   npx wrangler d1 execute jd-matcher-db --file migrations/002_email_verification.sql
 
    # Create KV namespace
    npx wrangler kv:namespace create "SESSION_KV"
@@ -149,6 +155,7 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-tu
 | `/jobs` | Browse your matched jobs (paginated) |
 | `/upload_resume` | Upload your resume (text file) |
 | `/expectation` | Set job expectations (location, salary, language, etc.) |
+| `/email` | Set email address and verify for email notifications |
 
 ### How It Works
 
@@ -157,7 +164,8 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-tu
 3. **Job Crawling**: Cron triggers crawl jobs from RemoteOK and WeWorkRemotely every 2 hours
 4. **Embedding Generation**: New jobs are embedded via Queue consumer and stored in Vectorize
 5. **Matching**: Vector search finds similar jobs, then the AI agent (Vercel AI SDK) performs semantic ranking. The agent runs inside Cloudflare Containers (`MatchContainer`) to support long-running LLM calls.
-6. **Notifications**: Users are notified when matching jobs are found
+6. **Notifications**: Users are notified via Telegram and/or email when matching jobs are found
+7. **Email Verification**: Users can set their email via `/email` command, receive a verification link, and opt into email notifications
 
 ## 🛠️ Development
 
@@ -208,6 +216,18 @@ npm run typecheck
 | `TELEGRAM_BOT_TOKEN` | Yes | Telegram bot token from @BotFather |
 | `LLM_OPENROUTER_APIKEY` | Yes | OpenRouter API key for embeddings |
 | `LLM_DEEPSEEK_APIKEY` | Yes | DeepSeek API key for job matching |
+
+### Cloudflare Bindings
+
+| Binding | Type | Description |
+|---|---|---|
+| `EMAIL` | `send_email` | Cloudflare Email Service for sending verification and notification emails |
+
+### Configuration Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `APP_URL` | Yes | — | Public app URL for email verification links (e.g. `https://jdmatcher.guoshaotech.com`) |
 
 ### Optional Environment Variables
 

@@ -79,6 +79,8 @@ export interface Env {
   LLM_DEEPSEEK_APIKEY: string;
   LLM_DEEPSEEK_MODEL: string;
   LLM_DEEPSEEK_REASONINGEFFORT: string;
+  EMAIL: SendEmail;
+  APP_URL: string;
 }
 
 export type JobType = "crawl" | "embed" | "match" | "notify";

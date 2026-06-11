@@ -20,6 +20,9 @@ index_name = "job-desc-embeddings"
 binding = "RESUME_EMBEDDINGS"
 index_name = "resume-embeddings"
 
+[[send_email]]
+name = "EMAIL"
+
 [[queues.producers]]
 queue = "jd-jobs-pool"
 binding = "JOBS_QUEUE"
@@ -52,6 +55,7 @@ LLM_OPENROUTER_EMBEDDINGMODEL = "qwen/qwen3-embedding-8b"
 LLM_DEEPSEEK_BASEURL = "https://api.deepseek.com/v1"
 LLM_DEEPSEEK_MODEL = "deepseek-v4-flash"
 LLM_DEEPSEEK_REASONINGEFFORT = "high"
+APP_URL = "https://jdmatcher.guoshaotech.com"
 
 [observability.logs]
 enabled = true
