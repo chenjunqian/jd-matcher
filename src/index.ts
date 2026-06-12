@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { webhookCallback } from "grammy";
 import { Container } from "@cloudflare/containers";
 import type { Env, JobMessage } from "./lib/types.js";
+import landingHtml from "./landing.html";
 import { createBot } from "./bot/bot.js";
 import { handleCrawl } from "./jobs/crawl.js";
 import { handleEmbed } from "./jobs/embed.js";
@@ -23,6 +24,9 @@ app.post("/telegram/webhook", (c) => {
   const bot = createBot(c.env.TELEGRAM_BOT_TOKEN, c.env);
   return webhookCallback(bot, "cloudflare-mod")(c.req.raw);
 });
+
+// ─── Landing page ──────────────────────────────────────────────────────────
+app.get("/", (c) => c.html(landingHtml));
 
 // ─── Health ────────────────────────────────────────────────────────────────
 app.get("/health", (c) => c.text("OK"));

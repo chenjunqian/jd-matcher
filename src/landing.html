@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>JD Matcher — AI-Powered Job Matching</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #fff; color: #111; line-height: 1.6;
+    padding: 40px 20px; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .container { max-width: 600px; width: 100%; }
+  h1 { font-size: clamp(32px, 10vw, 56px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+  .subtitle {
+    font-size: clamp(16px, 4vw, 20px); color: #555; margin-top: 8px;
+    font-weight: 400;
+  }
+  .desc { margin-top: 20px; font-size: 15px; color: #444; }
+  .btn-wrap { margin-top: 28px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 52px; padding: 0 32px;
+    font-size: 16px; font-weight: 600; text-decoration: none;
+    color: #fff; background: #111; border-radius: 8px;
+    transition: background .2s;
+  }
+  .btn:hover { background: #333; }
+  .btn:active { background: #000; }
+  section { margin-top: 48px; }
+  section h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 16px; }
+  .steps { list-style: none; }
+  .steps li {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 14px 0; border-bottom: 1px solid #eee;
+  }
+  .steps li:last-child { border-bottom: none; }
+  .step-num {
+    flex-shrink: 0; width: 28px; height: 28px; margin-top: 2px;
+    border-radius: 50%; background: #111; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+  }
+  .step-text { font-size: 15px; color: #333; padding-top: 3px; }
+  .step-text strong { color: #111; }
+  .commands { display: flex; flex-wrap: wrap; gap: 8px; }
+  .commands code {
+    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
+    font-size: 13px; background: #f5f5f5; padding: 6px 12px;
+    border-radius: 6px; color: #111;
+  }
+  hr { margin-top: 48px; border: none; border-top: 1px solid #eee; }
+  footer { margin-top: 16px; font-size: 12px; color: #aaa; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>JD Matcher</h1>
+  <p class="subtitle">AI-Powered Job Matching</p>
+  <p class="desc">
+    Upload your resume, set expectations, and get matched with remote jobs from across the web — all inside Telegram.
+  </p>
+  <div class="btn-wrap">
+    <a class="btn" href="https://t.me/JDMatcherBot" id="tgBtn">Open in Telegram</a>
+  </div>
+
+  <section>
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li>
+        <span class="step-num">1</span>
+        <span class="step-text">Start the bot on <strong>Telegram</strong></span>
+      </li>
+      <li>
+        <span class="step-num">2</span>
+        <span class="step-text"><strong>Upload</strong> your resume and set expectations</span>
+      </li>
+      <li>
+        <span class="step-num">3</span>
+        <span class="step-text">Get <strong>matched</strong> and notified automatically</span>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Bot Commands</h2>
+    <div class="commands">
+      <code>/start</code>
+      <code>/upload_resume</code>
+      <code>/jobs</code>
+      <code>/expectation</code>
+      <code>/email</code>
+      <code>/help</code>
+    </div>
+  </section>
+
+  <hr>
+  <footer>JD Matcher &copy; 2026</footer>
+</div>
+
+<script>
+  (function() {
+    var btn = document.getElementById("tgBtn");
+    if (btn && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      btn.href = "tg://resolve?domain=JDMatcherBot";
+    }
+  })();
+</script>
+</body>
+</html>
