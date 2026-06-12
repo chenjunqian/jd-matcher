@@ -1,5 +1,9 @@
 name = "jd-matcher"
+rules = [
+  { type = "Text", globs = ["**/*.html"] }
+]
 main = "src/index.ts"
+assets = { directory = "./static" }
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 
