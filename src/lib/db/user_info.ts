@@ -74,6 +74,30 @@ export async function getUsersWithResumeCount(db: D1Database): Promise<number> {
   return r?.count ?? 0;
 }
 
+export async function incrementResumeUpdateCount(
+  db: D1Database, userId: string, today: string
+): Promise<number> {
+  const row = await db.prepare(
+    "SELECT resume_update_date, resume_update_count FROM user_info WHERE id = ?"
+  ).bind(userId).first<{ resume_update_date: string | null; resume_update_count: number | null }>();
+
+  const prevDate = row?.resume_update_date ?? "";
+  const prevCount = row?.resume_update_count ?? 0;
+
+  if (prevDate !== today) {
+    await db
+      .prepare("UPDATE user_info SET resume_update_date = ?, resume_update_count = 1 WHERE id = ?")
+      .bind(today, userId).run();
+    return 1;
+  }
+
+  const nextCount = prevCount + 1;
+  await db
+    .prepare("UPDATE user_info SET resume_update_count = ? WHERE id = ?")
+    .bind(nextCount, userId).run();
+  return nextCount;
+}
+
 function mapRow(row: Record<string, unknown>): UserInfo {
   return {
     id: row.id as string,
@@ -83,5 +107,7 @@ function mapRow(row: Record<string, unknown>): UserInfo {
     resume: (row.resume as string) ?? undefined,
     jobExpectations: (row.job_expectations as string) ?? undefined,
     vectorizeId: (row.vectorize_id as string) ?? undefined,
+    resumeUpdateDate: (row.resume_update_date as string) ?? undefined,
+    resumeUpdateCount: (row.resume_update_count as number) ?? undefined,
   };
 }

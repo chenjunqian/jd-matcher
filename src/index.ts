@@ -6,11 +6,10 @@ import landingHtml from "./landing.html";
 import { createBot } from "./bot/bot.js";
 import { handleCrawl } from "./jobs/crawl.js";
 import { handleEmbed } from "./jobs/embed.js";
-import { handleMatch } from "./jobs/match.js";
+import { handleMatch, matchUser } from "./jobs/match.js";
 import { handleNotify } from "./jobs/notify.js";
-import { getUsersWithResumeCount } from "./lib/db/user_info.js";
+import { getUsersWithResumeCount, getUserInfoById, updateUserEmail } from "./lib/db/user_info.js";
 import { getEmailVerificationByToken, markEmailVerified, deleteEmailVerification } from "./lib/db/email_verification.js";
-import { getUserInfoById, updateUserEmail } from "./lib/db/user_info.js";
 
 export class MatchContainer extends Container {
   defaultPort = 3000;
@@ -116,7 +115,12 @@ export default {
             await handleEmbed(env, limit);
             break;
           case "match":
-            await handleMatch(env, offset ?? 0);
+            if (msg.body.userId) {
+              const user = await getUserInfoById(env.DB, msg.body.userId);
+              if (user) await matchUser(env, user);
+            } else {
+              await handleMatch(env, offset ?? 0);
+            }
             break;
           case "notify":
             await handleNotify(env);
