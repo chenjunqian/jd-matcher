@@ -1,5 +1,9 @@
 # JD Matcher — Cloudflare Workers
 
+## Rules
+
+- **Git commit/push**: Every git commit and push requires explicit user approval before execution. This applies to every single operation — prior approval for a previous change does not carry over to new changes.
+
 ## Tech Stack
 
 - **Runtime**: Cloudflare Workers (TypeScript)
