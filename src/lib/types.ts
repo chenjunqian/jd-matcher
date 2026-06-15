@@ -29,6 +29,8 @@ export interface UserInfo {
   resume?: string;
   jobExpectations?: string;
   vectorizeId?: string;
+  resumeUpdateDate?: string;
+  resumeUpdateCount?: number;
 }
 
 export interface UserMatchedJob {
@@ -89,4 +91,5 @@ export interface JobMessage {
   type: JobType;
   limit?: number;
   offset?: number;
+  userId?: string;
 }

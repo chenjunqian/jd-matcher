@@ -1,4 +1,4 @@
-import type { Env, UserMatchedJobPromptInput } from "../lib/types.js";
+import type { Env, UserInfo, UserMatchedJobPromptInput } from "../lib/types.js";
 import { getUsersWithResume } from "../lib/db/user_info.js";
 import { getJobDetailsByIds } from "../lib/db/job_detail.js";
 import { createMatchJobIfNotExist, getExistingMatchedJobIds } from "../lib/db/user_matched_job.js";
@@ -9,16 +9,13 @@ function oneMonthAgo(): string {
   const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split("T")[0];
 }
 
-export async function handleMatch(env: Env, offset: number): Promise<void> {
-  const users = await getUsersWithResume(env.DB, offset, 1);
-  if (!users.length) {
-    console.log(`[match] no user at offset ${offset}`);
+export async function matchUser(env: Env, user: UserInfo): Promise<void> {
+  if (!user.vectorizeId) {
+    console.log(`[match] no vectorizeId for user ${user.id}`);
     return;
   }
 
-  const user = users[0];
-
-  const vec = await getVectorById(env.RESUME_EMBEDDINGS, user.vectorizeId!);
+  const vec = await getVectorById(env.RESUME_EMBEDDINGS, user.vectorizeId);
   if (!vec) {
     console.log(`[match] no vector for user ${user.id}`);
     return;
@@ -65,4 +62,13 @@ export async function handleMatch(env: Env, offset: number): Promise<void> {
       console.log(`[match] all ${parsed.length} results filtered (score < 6) for user ${user.id}`);
     }
   }
+}
+
+export async function handleMatch(env: Env, offset: number): Promise<void> {
+  const users = await getUsersWithResume(env.DB, offset, 1);
+  if (!users.length) {
+    console.log(`[match] no user at offset ${offset}`);
+    return;
+  }
+  await matchUser(env, users[0]);
 }
