@@ -1,107 +1,187 @@
 # JD Matcher
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-blue.svg)](https://typescriptlang.org)
+[![AI Agent Skill](https://img.shields.io/badge/AI_Agent_Skill-Cross--Platform-8A2BE2.svg)](skills/jd-matcher-skill/SKILL.md)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange.svg)](https://workers.cloudflare.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-JD Matcher is an intelligent job matching tool that leverages Large Language Model (LLM) capabilities to find the most suitable jobs based on user resumes and job descriptions. The project provides services through a Telegram bot, automatically crawling job listings and notifying users when matching positions are found.
+**JD Matcher** is an intelligent remote job discovery and evaluation engine that pairs candidate backgrounds with live job postings using Large Language Models (LLMs).
 
-## ✨ Features
+It offers two distinct operation modes:
+1. 🌟 **AI Agent Skill (Recommended)**: A local-first, database-free, privacy-preserving workflow for your AI Agent (Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor). Crawls jobs into a structured Markdown knowledge base, filters opportunities via filesystem search, applies strict veto gates, and delivers match recommendations in an elegant, interactive **Kami (`紙`)** visual dashboard.
+2. ☁️ **Cloudflare Serverless Daemon**: An automated 24/7 background cloud stack (Cloudflare Workers, D1 SQLite, Vectorize, Cloudflare Containers, and Queues) with proactive Telegram bot alerts and email notifications.
 
-- 🤖 **Intelligent Matching**: Uses LLM-based embeddings (OpenRouter) for vector representations and DeepSeek for semantic matching
-- 📱 **Telegram Bot Integration**: grammY-powered bot with pagination, file upload, and inline keyboards
-- 🕷️ **Automated Job Crawling**: Supports RemoteOK and WeWorkRemotely job sources with scheduled crawling
-- 🔔 **Smart Notifications**: Automatically notifies users when matching jobs are found via Telegram and email
-- 📧 **Email Verification**: Users can set and verify their email for email-based job notifications
-- ⚡ **Cloud-Native**: Built on Cloudflare Workers with D1 database, Vectorize search, Queue-based async jobs, and Container-based agent runtime
-- 🚀 **Fully Serverless**: No infrastructure to manage, auto-scaling with Containers for long-running workloads
+---
 
-## 🏗️ Architecture
+## ⚡ Quick Comparison: Which Mode Should You Use?
+
+| Feature | 🌟 AI Agent Skill (`jd-matcher-skill`) | ☁️ Serverless Cloud Worker |
+|---|---|---|
+| **Best For** | **Daily interactive job search & deep evaluations** | **24/7 automated continuous background monitoring** |
+| **Setup Cost** | **Zero cloud setup** (Node.js >= 22 or Bun) | Requires Cloudflare D1, KV, Vectorize, Queues, Telegram token |
+| **Data Privacy** | **100% Local & Private** (PII strictly git-ignored) | Resume & data stored in Cloudflare D1 & Vectorize |
+| **User Interface** | **Kami (`紙`) Interactive HTML Dashboard** (auto-opens in browser) | Telegram Bot (`@your_bot`) + Email notifications |
+| **Supported AI Agents** | Google Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor | Standalone cloud service (Vercel AI SDK inside Container) |
+| **Database Required** | **None** (Markdown Knowledge Base + `find`/`grep`) | Cloudflare D1 + Vectorize |
+
+---
+
+## 🌟 Recommended: Use as an AI Agent Skill (`jd-matcher-skill`)
+
+The primary way to use JD Matcher is through its built-in **Agent Skill**. You don't need to deploy servers, manage databases, or configure webhooks. Just talk to your AI Agent!
+
+### Why Use the Skill?
+- **Universal Agent Support**: Pre-configured symlinks in `.agents/skills/` and `.claude/skills/` ensure instant discovery by all major AI coding agents.
+- **Glean-Inspired Knowledge Base**: Job postings from RemoteOK and WeWorkRemotely are stored as structured, date-partitioned Markdown files (`data/jds/<YYYY>/<MM>/`).
+- **Two-Stage Fast Retrieval**: Native filesystem search inspects the last 2 months of postings in milliseconds without vector databases.
+- **Hard Constraints Gate**: Strict single-veto enforcement (e.g. immediately rejects US-only jobs for worldwide candidates, rejects below-floor salaries, etc.).
+- **Kami (`紙`) Visual Dashboard**: Visualizes your top matches, vetoed listings, and full crawled inventory in a paper-aesthetic dashboard inspired by [Kami (`紙`)](skills/kami/SKILL.md).
+
+---
+
+### 🤖 How to Use in Your AI Agent
+
+#### 1. Compatibility
+The skill is located at [`skills/jd-matcher-skill`](skills/jd-matcher-skill) and automatically symlinked for standard agent discovery:
+- `.agents/skills/jd-matcher-skill` (Antigravity, OpenCode, Codex, Pi, Cursor)
+- `.claude/skills/jd-matcher-skill` (Claude Code)
+
+#### 2. First-Time Setup (Onboarding)
+Before matching, ensure your candidate profile is ready under `data/profile/`:
+
+- `data/profile/resume.md`: Your technical background, core skills, years of experience, and project impact.
+- `data/profile/expectations.md`: Hard constraints (100% remote, timezone preferences, salary floor, target titles) and preferences.
+
+> **💡 Proactive Onboarding**: If you haven't filled these out yet, simply tell your AI Agent! When you ask it to match jobs, the agent will detect missing profile data, pause, and guide you through setting them up interactively in chat or scaffold them from the tracked reference templates:
+> - Resume Example: [`data/profile/resume.example.md`](data/profile/resume.example.md)
+> - Expectations Example: [`data/profile/expectations.example.md`](data/profile/expectations.example.md)
+>
+> *(Note: `data/profile/resume.md` and `expectations.md` are strictly `.gitignore`d to prevent accidental leakage of personal info!)*
+
+#### 3. Agent Prompts
+Simply instruct your AI Agent in natural language:
+
+```markdown
+"Find the latest remote jobs for me and match them against my resume."
+```
+```markdown
+"Crawl recent postings from RemoteOK and WeWorkRemotely, filter the last 2 months, and show me the top matches."
+```
+```markdown
+"Evaluate available backend engineering opportunities against my expectations and open the visual dashboard."
+```
+
+#### 4. What the Agent Does Automatically
+```
+1. Profile Check    ──▶  Verifies resume.md & expectations.md (prompts user if missing)
+2. Crawl & Ingest   ──▶  Runs crawl script to fetch fresh listings into data/jds/
+3. Filter & Gate    ──▶  Fast-retrieves 2-month opportunities & applies hard veto gates
+4. Deep Scoring     ──▶  Evaluates skill alignment (0-10) with detailed reasoning & tips
+5. Visual Dashboard ──▶  Generates data/matches/dashboard.html & opens it in your browser!
+```
+
+---
+
+### 💻 Manual CLI Usage (Optional)
+
+You can also run the underlying TypeScript scripts directly using Node.js (>= 22.6) or Bun without third-party dependencies:
+
+```bash
+# 1. Crawl latest 30 remote jobs from RemoteOK and WeWorkRemotely
+node skills/jd-matcher-skill/scripts/crawl.ts --limit 30
+
+# 2. Fast-filter postings within the last 2 months by tech tags or keywords
+node skills/jd-matcher-skill/scripts/search.ts --months 2 --tags typescript,react,fullstack
+node skills/jd-matcher-skill/scripts/search.ts --months 2 --keywords backend,golang,api
+
+# 3. Generate the Kami-styled HTML dashboard and open in browser
+node skills/jd-matcher-skill/scripts/dashboard.ts --open
+```
+
+---
+
+## 🎨 Visual Dashboard & Kami (`紙`) Design System
+
+Matches and crawled inventory are rendered into [`data/matches/dashboard.html`](data/matches/dashboard.html). By default, the dashboard adheres to the **Kami (`紙`)** editorial design system:
+
+- **Warm Paper Aesthetics**: Soft background tones (`#FAF8F5`, `#F7F5F0`), evoking artisanal paper documents.
+- **Editorial Typography**: Elegant serif headings (`Noto Serif`, `Source Han Serif`, `Georgia`) paired with crisp, high-contrast sans-serif body text.
+- **Ink-Blue Accents**: Deep ink-blue branding (`#1E3A8A`, `#1B365D`) balanced with warm charcoal slate text.
+- **Interactive Features**: Dynamic client-side search, multi-facet filtering (source, match score tiers), slide-out drawer for full JD inspection, and KPI scorecards.
+
+---
+
+## ☁️ Cloudflare Serverless Deployment (Telegram Bot Mode)
+
+If you need a 24/7 background cloud daemon that runs scheduled hourly crons, vectorizes job descriptions with Cloudflare Vectorize, and sends real-time Telegram and email notifications, you can deploy the Cloudflare Workers stack.
+
+### 🏗️ Cloud Architecture
 
 ```txt
 jd-matcher/
 ├── src/
 │   ├── index.ts               # Entry: Hono routes + scheduled() + queue()
 │   ├── lib/
-│   │   ├── types.ts           # All type definitions + Env bindings
+│   │   ├── types.ts           # Type definitions + Env bindings
 │   │   ├── db/                # D1 CRUD (job_detail, user_info, user_matched_job, email_verification)
-│   │   ├── llm/               # OpenRouter embeddings + DeepSeek chat + prompt
+│   │   ├── llm/               # OpenRouter embeddings + DeepSeek chat
 │   │   ├── crawler/           # RemoteOK + WeWorkRemotely scrapers
 │   │   ├── email/             # Email HTML/text templates
 │   │   └── vectorize/         # Vectorize upsert/query helpers
 │   ├── container/
-│   │   ├── server.ts          # HTTP server wrapping runMatchAgent for Container runtime
+│   │   ├── server.ts          # HTTP server wrapping runMatchAgent for Cloudflare Containers
 │   │   └── server.test.ts     # Integration tests
 │   ├── bot/
-│   │   ├── bot.ts             # grammY setup + env middleware + command registration
+│   │   ├── bot.ts             # grammY setup + command registration
 │   │   ├── session.ts         # KV-backed chat session (10min TTL)
-│   │   ├── constants.ts       # All Telegram reply texts
+│   │   ├── constants.ts       # Telegram reply texts
 │   │   └── handlers/          # start, help, all_jobs, jobs, upload_resume, expectation
 │   └── jobs/
 │       ├── crawl.ts           # Fetch jobs from RemoteOK + WeWorkRemotely
 │       ├── embed.ts           # Generate embeddings → store in Vectorize
 │       ├── match.ts           # Vector search → AI agent (Vercel AI SDK) → store matches
-│       ├── match.test.ts
 │       └── notify.ts          # Unnotified matches → Telegram + email
 ├── migrations/
 │   ├── 001_initial.sql        # D1 schema
-│   └── 002_email_verification.sql  # Email verification table
-├── wrangler.toml              # Single config — D1, KV, Vectorize, Queue, Cron
-├── package.json
-└── tsconfig.json
+│   └── 002_email_verification.sql
+├── wrangler.toml              # D1, KV, Vectorize, Queue, Cron config
 ```
 
-## Flow
+### Cloud Flow
 
 ```
-Cron        ──▶  scheduled()  ──▶  JOBS_QUEUE.send({type})  ──▶  queue() → dispatch
-Telegram    ──▶  Hono POST /telegram/webhook  ──▶  grammY bot  ──▶  command handlers
-Match agent ──▶  MatchContainer (Cloudflare Containers)  ──▶  runMatchAgent (Vercel AI SDK)
+Cron (hourly) ──▶ scheduled() ──▶ JOBS_QUEUE.send({type}) ──▶ queue() → dispatch
+Telegram      ──▶ Hono POST /telegram/webhook ──▶ grammY bot ──▶ command handlers
+Match agent   ──▶ MatchContainer (Cloudflare Containers) ──▶ runMatchAgent (Vercel AI SDK)
 ```
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 20+ (for local development)
+### Cloud Prerequisites
+- Node.js 20+
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npx wrangler`)
-- Cloudflare account
+- Cloudflare account with Workers, D1, KV, Vectorize, and Queues enabled
 - Telegram Bot Token (from [@BotFather](https://t.me/botfather))
-- OpenRouter API Key
-- DeepSeek API Key
+- OpenRouter API Key & DeepSeek API Key
 
-### Installation
+### Deploying to Cloudflare
 
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/chenjunqian/jd-matcher.git
-   cd jd-matcher
-   ```
-
-2. **Install dependencies**
-
+1. **Install dependencies**
    ```bash
    npm install
    ```
 
-3. **Set up Cloudflare resources**
-
+2. **Set up Cloudflare resources**
    ```bash
    # Create D1 database
    npx wrangler d1 create jd-matcher-db
+   # (Copy database_id into wrangler.toml)
 
-   # Copy the database_id from output into wrangler.toml
-
-   # Run migration
+   # Run migrations
    npx wrangler d1 execute jd-matcher-db --file migrations/001_initial.sql
-
-   # Run email verification migration
    npx wrangler d1 execute jd-matcher-db --file migrations/002_email_verification.sql
 
    # Create KV namespace
    npx wrangler kv:namespace create "SESSION_KV"
-   # Copy id into wrangler.toml [[kv_namespaces]]
+   # (Copy id into wrangler.toml [[kv_namespaces]])
 
    # Create Vectorize indexes
    npx wrangler vectorize create job-desc-embeddings --dimensions=1024 --metric=cosine
@@ -111,39 +191,19 @@ Match agent ──▶  MatchContainer (Cloudflare Containers)  ──▶  runMat
    npx wrangler queue create jd-jobs-pool
    ```
 
-4. **Set secrets**
-
+3. **Configure Secrets**
    ```bash
    npx wrangler secret put TELEGRAM_BOT_TOKEN
    npx wrangler secret put LLM_OPENROUTER_APIKEY
    npx wrangler secret put LLM_DEEPSEEK_APIKEY
    ```
 
-5. **Deploy**
-
+4. **Deploy & Set Webhook**
    ```bash
    npx wrangler deploy
-   ```
 
-   > **Note**: The `MatchContainer` requires a Dockerfile at the project root. The container image is built and deployed automatically with `wrangler deploy`.
-
-6. **Set Telegram webhook**
-
-   ```bash
    curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://jd-matcher.<subdomain>.workers.dev/telegram/webhook"
    ```
-
-### Local Development
-
-```bash
-# Start local dev server with bindings
-npx wrangler dev
-
-# Register webhook for local testing (requires tunnel)
-curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-tunnel.ngrok.io/telegram/webhook"
-```
-
-## 📖 Usage
 
 ### Telegram Bot Commands
 
@@ -154,95 +214,28 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-tu
 | `/all_jobs` | Browse all available jobs (paginated) |
 | `/jobs` | Browse your matched jobs (paginated) |
 | `/upload_resume` | Upload your resume (text file) |
-| `/expectation` | Set job expectations (location, salary, language, etc.) |
-| `/email` | Set email address and verify for email notifications |
+| `/expectation` | Set job expectations (location, salary, language) |
+| `/email` | Set and verify email address for job alerts |
 
-### How It Works
+---
 
-1. **Resume Upload**: Users upload their resumes as text files through the Telegram bot
-2. **Vector Embedding**: Resumes are converted to vector representations using OpenRouter embeddings
-3. **Job Crawling**: Cron triggers crawl jobs from RemoteOK and WeWorkRemotely every 2 hours
-4. **Embedding Generation**: New jobs are embedded via Queue consumer and stored in Vectorize
-5. **Matching**: Vector search finds similar jobs, then the AI agent (Vercel AI SDK) performs semantic ranking. The agent runs inside Cloudflare Containers (`MatchContainer`) to support long-running LLM calls.
-6. **Notifications**: Users are notified via Telegram and/or email when matching jobs are found
-7. **Email Verification**: Users can set their email via `/email` command, receive a verification link, and opt into email notifications
-
-## 🛠️ Development
-
-### Key Commands
+## 🛠️ Development & Testing
 
 ```bash
-npm run dev              # Start wrangler dev server
-npm run dev:cron         # Dev server with test-scheduled flag
-npm run deploy           # Deploy to Cloudflare Workers
-npm run test             # Run vitest tests
-npm run typecheck        # TypeScript type check
-```
+# Run all unit and integration tests (including skill tests)
+npx vitest run
 
-### Adding New Job Sources
+# Run skill-specific tests
+npx vitest run skills/jd-matcher-skill/scripts/skill.test.ts
 
-1. Create a new crawler file in `src/lib/crawler/`
-2. Export the fetch function
-3. Add it to the crawl pipeline in `src/jobs/crawl.ts`
-
-### Adding New LLM Providers
-
-1. Add the provider client in `src/lib/llm/`
-2. Add environment variables to `src/lib/types.ts` `Env` interface
-3. Add the API call to the appropriate job handler
-
-### Adding New Bot Commands
-
-1. Add handler in `src/bot/handlers/`
-2. Register in `src/bot/bot.ts` with `bot.command()`
-3. Add reply text to `src/bot/constants.ts`
-
-## 🧪 Testing
-
-```bash
-npx vitest run            # Run all tests
-npx vitest run --reporter=verbose  # Verbose output
-
-# Type checking
+# TypeScript typecheck
 npm run typecheck
+
+# Start local worker dev server
+npm run dev
 ```
 
-## 📊 Configuration
-
-### Environment Variables (Secrets)
-
-| Variable | Required | Description |
-|---|---|---|
-| `TELEGRAM_BOT_TOKEN` | Yes | Telegram bot token from @BotFather |
-| `LLM_OPENROUTER_APIKEY` | Yes | OpenRouter API key for embeddings |
-| `LLM_DEEPSEEK_APIKEY` | Yes | DeepSeek API key for job matching |
-
-### Cloudflare Bindings
-
-| Binding | Type | Description |
-|---|---|---|
-| `EMAIL` | `send_email` | Cloudflare Email Service for sending verification and notification emails |
-
-### Configuration Variables
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `APP_URL` | Yes | — | Public app URL for email verification links (e.g. `https://jdmatcher.guoshaotech.com`) |
-
-### Optional Environment Variables
-
-| Variable | Default | Description |
-|---|---|---|
-| `LLM_OPENROUTER_BASEURL` | `https://openrouter.ai/api/v1` | OpenRouter API endpoint |
-| `LLM_OPENROUTER_MODEL` | `deepseek/deepseek-v3.2` | Chat model for OpenRouter |
-| `LLM_OPENROUTER_EMBEDDINGMODEL` | `qwen/qwen3-embedding-8b` | Embedding model |
-| `LLM_DEEPSEEK_BASEURL` | `https://api.deepseek.com/v1` | DeepSeek API endpoint |
-| `LLM_DEEPSEEK_MODEL` | `deepseek-v4-flash` | DeepSeek chat model |
-| `LLM_DEEPSEEK_REASONINGEFFORT` | `high` | DeepSeek reasoning effort |
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+---
 
 ## 📄 License
 
@@ -250,20 +243,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
+- [Kami (`紙`)](https://github.com/tw93/kami) - Craft document and dashboard typography & design system
 - [Cloudflare Workers](https://workers.cloudflare.com) - Serverless compute platform
-- [Hono](https://hono.dev) - Lightweight web framework
+- [Hono](https://hono.dev) - High-performance web framework
 - [grammY](https://grammy.dev) - Telegram bot framework
-- [OpenRouter](https://openrouter.ai) - Unified LLM API gateway
-- [DeepSeek](https://deepseek.com) - LLM provider
-- [RemoteOK](https://remoteok.com) - Remote job board
-- [WeWorkRemotely](https://weworkremotely.com) - Remote job board
-
-## 📞 Support
-
-If you have any questions or issues, please:
-1. Check the [Issues](https://github.com/chenjunqian/jd-matcher/issues) page
-2. Create a new issue if needed
-
----
-
-⭐ If this project helps you, please give it a star!
+- [Vercel AI SDK](https://sdk.vercel.ai) - Agent orchestration
+- [RemoteOK](https://remoteok.com) & [WeWorkRemotely](https://weworkremotely.com) - Remote job feeds

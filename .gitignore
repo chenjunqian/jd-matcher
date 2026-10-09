@@ -6,3 +6,15 @@ dist/
 **/.DS_Store
 .vscode/
 .wrangler/
+
+# JD Matcher Skill — Local Knowledge Base & Generated Artifacts
+data/jds/*
+!data/jds/.gitkeep
+data/matches/*
+!data/matches/.gitkeep
+!data/matches/*.example.md
+data/profile/resume.md
+data/profile/expectations.md
+!data/profile/*.example.md
+!data/profile/.gitkeep
+data/test_jds/
