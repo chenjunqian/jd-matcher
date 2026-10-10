@@ -116,7 +116,9 @@ export function parseReportsFromDir(dirPath: string): {
 
   if (!fs.existsSync(dirPath)) return { matches, rejections };
 
-  const files = fs.readdirSync(dirPath).filter((f) => f.endsWith(".md"));
+  const allMd = fs.readdirSync(dirPath).filter((f) => f.endsWith(".md"));
+  const actualReports = allMd.filter((f) => !f.endsWith(".example.md"));
+  const files = actualReports.length > 0 ? actualReports : allMd;
 
   for (const file of files) {
     const fullPath = path.join(dirPath, file);
