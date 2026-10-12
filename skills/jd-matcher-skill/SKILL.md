@@ -3,6 +3,7 @@ name: jd-matcher-skill
 description: >-
   Crawl latest remote jobs into a local Glean-inspired Markdown knowledge base,
   filter recent 2-month opportunities via file system search (find/grep),
+  prioritize fresh un-evaluated jobs while excluding already matched/rejected opportunities,
   and evaluate candidate resume and expectations to provide tailored job recommendations.
   Presents matched results in an interactive Kami-styled HTML dashboard.
   Use when the user wants to fetch latest remote jobs, match remote jobs with their resume,
@@ -12,7 +13,7 @@ description: >-
 # JD Matcher Skill
 
 This skill provides a local-first, database-free, and serverless-free workflow for discovering and matching remote jobs.
-Job postings are archived as structured Markdown knowledge base files in the local filesystem, enabling rapid two-stage retrieval via native date-partitioned directories, `find`, and `grep`, followed by deep AI semantic evaluation against candidate profile constraints.
+Job postings are archived as structured Markdown knowledge base files in the local filesystem, enabling rapid two-stage retrieval via native date-partitioned directories, `find`, and `grep`, with automatic detection and exclusion of already-evaluated jobs, followed by deep AI semantic evaluation against candidate profile constraints.
 
 Results are presented in an elegant, interactive HTML visual dashboard styled according to the **Kami (`紙`)** design system.
 
@@ -100,25 +101,32 @@ node skills/jd-matcher-skill/scripts/crawl.ts --source weworkremotely --limit 20
 
 ### Step 3: Two-Stage Fast Retrieval & Filtering (Retrieve & Filter)
 
-Filter for fresh opportunities posted within the **last 2 months** matching the candidate's core tech stack and role titles:
+Filter for fresh opportunities posted within the **last 2 months** matching the candidate's core tech stack and role titles.
+The retrieval engine automatically scans past match reports in `data/matches/` (including `archive/`), tags job evaluation status (`🟢 New`, `⚪ Matched`, `❌ Rejected`), and **prioritizes fresh un-evaluated jobs by default**:
 
 ```bash
-# Filter by tech tags within the last 2 months
+# Filter by tech tags within the last 2 months (unmatched jobs prioritized by default)
 node skills/jd-matcher-skill/scripts/search.ts --months 2 --tags typescript,react,fullstack --limit 15
 
-# Or filter by keywords and role titles
-node skills/jd-matcher-skill/scripts/search.ts --months 2 --keywords backend,golang,api --limit 15
+# Strictly exclude already matched or rejected jobs (ignore previously evaluated opportunities)
+node skills/jd-matcher-skill/scripts/search.ts --months 2 --tags typescript,react,fullstack --exclude-matched --limit 15
+
+# Or filter by keywords and role titles while excluding past evaluations
+node skills/jd-matcher-skill/scripts/search.ts --months 2 --keywords backend,golang,api --exclude-matched --limit 15
 ```
 
-The script outputs a markdown summary table of matching candidate JDs along with their relative file paths.
+The script outputs a markdown summary table displaying candidate JDs, their `Status` (`🟢 New` vs `⚪ Matched` / `❌ Rejected`), and relative file paths.
 
 ### Step 4: AI Agent Deep Evaluation & Scoring (Evaluate)
 
 Follow the evaluation rubric: [evaluation-rubric.md](./references/evaluation-rubric.md).
 
-1. **Hard Constraints Gate (Strict Veto)**:
-   - Check if each JD violates any requirement in `data/profile/expectations.md` (e.g., US-only citizenship, non-remote requirement, insufficient salary floor). Immediately reject non-compliant jobs and record the rejection reason.
-2. **Deep Fit Scoring (0-10 Scale)**:
+1. **Prioritize Unmatched Opportunities (评估去重与优先原则)**:
+   - **Focus on Fresh Opportunities**: Prioritize JDs labeled `🟢 New` that have not been evaluated before.
+   - **Ignore Already Evaluated Jobs**: For JDs already evaluated in past reports (`⚪ Matched` or `❌ Rejected`), **skip and ignore them** unless the candidate has explicitly updated their resume or relaxed their hard constraints. This prevents redundant token consumption and avoids re-recommending duplicate jobs to the user.
+2. **Hard Constraints Gate (Strict Veto)**:
+   - Check if each new JD violates any requirement in `data/profile/expectations.md` (e.g., US-only citizenship, non-remote requirement, insufficient salary floor). Immediately reject non-compliant jobs and record the rejection reason.
+3. **Deep Fit Scoring (0-10 Scale)**:
    - For JDs passing the hard gate, read the full Markdown file using the `view_file` tool and evaluate fit:
      - **9.0 - 10.0**: Outstanding match (core stack, seniority, and domain all align strongly). Top recommendation.
      - **7.0 - 8.9**: Good fit (majority of core requirements met, minor gaps). Recommended for application.
@@ -170,6 +178,10 @@ Unless the user explicitly specifies another design framework or style, **all ge
 - `--keywords <k1,k2>`: Comma-separated keywords to search in title and content.
 - `--location <text>`: Location substring filter (e.g., `worldwide`).
 - `--limit <number>`: Maximum number of results to return (default: 20).
+- `--exclude-matched` / `--unmatched-only`: Strictly exclude already evaluated jobs (matched or rejected) in past reports.
+- `--prioritize-unmatched`: Sort fresh unmatched jobs ahead of evaluated ones (default: enabled).
+- `--include-matched`: Do not prioritize unmatched jobs, sort purely by post date.
+- `--matches-dir <dir>`: Custom path to match reports directory (default: `data/matches`).
 - `--format <markdown|json>`: Output format (default: `markdown`).
 
 ### `dashboard.ts`

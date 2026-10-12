@@ -213,3 +213,134 @@ describe("Dashboard Generation", () => {
   });
 });
 
+describe("Evaluated Job Exclusion & Prioritization", () => {
+  const TEST_MATCHES_DIR = path.resolve(process.cwd(), "data/test_matches");
+
+  beforeEach(() => {
+    if (fs.existsSync(TEST_DIR)) {
+      fs.rmSync(TEST_DIR, { recursive: true, force: true });
+    }
+    if (fs.existsSync(TEST_MATCHES_DIR)) {
+      fs.rmSync(TEST_MATCHES_DIR, { recursive: true, force: true });
+    }
+    fs.mkdirSync(TEST_DIR, { recursive: true });
+    fs.mkdirSync(TEST_MATCHES_DIR, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(TEST_DIR)) {
+      fs.rmSync(TEST_DIR, { recursive: true, force: true });
+    }
+    if (fs.existsSync(TEST_MATCHES_DIR)) {
+      fs.rmSync(TEST_MATCHES_DIR, { recursive: true, force: true });
+    }
+  });
+
+  it("builds evaluated index and detects matches/rejections accurately", async () => {
+    const { buildEvaluatedJobIndex, checkJobEvaluated } = await import("./utils.ts");
+
+    const sampleReport = `
+# Match Report
+## Top Matches
+### 1. [Staff Go Engineer](https://remoteok.com/job/123)
+- Company: SuperCorp
+- Source: RemoteOK (\`rok-123\`)
+- Local File: \`data/jds/2026/10/rok-123-supercorp-staff-go.md\`
+- Match Score: 9.5
+
+## Hard Gate Rejections
+| Title | Company | Reason |
+|---|---|---|
+| Junior Java Dev | OldBank | ❌ Compensation floor |
+`;
+
+    fs.writeFileSync(path.join(TEST_MATCHES_DIR, "2026-10-10-report.md"), sampleReport, "utf-8");
+
+    const index = buildEvaluatedJobIndex(TEST_MATCHES_DIR);
+
+    // Test matched job detection by ID
+    const matchCheck = checkJobEvaluated({ id: "rok-123", title: "Staff Go Engineer", company: "SuperCorp" }, index);
+    expect(matchCheck.evaluated).toBe(true);
+    expect(matchCheck.status).toBe("matched");
+
+    // Test rejection detection by Company + Title
+    const rejCheck = checkJobEvaluated({ title: "Junior Java Dev", company: "OldBank" }, index);
+    expect(rejCheck.evaluated).toBe(true);
+    expect(rejCheck.status).toBe("rejected");
+
+    // Test fresh/unmatched job
+    const freshCheck = checkJobEvaluated({ id: "fresh-999", title: "Elixir Hacker", company: "NewCo" }, index);
+    expect(freshCheck.evaluated).toBe(false);
+  });
+
+  it("excludes already evaluated jobs when excludeMatched is true", () => {
+    const docEvaluated: JobMarkdownDocument = {
+      metadata: {
+        id: "eval-001",
+        title: "Senior Go Developer",
+        company: "Sticker Mule",
+        source: "remoteok",
+        url: "https://remoteok.com/eval-001",
+        posted_at: "2026-10-10T00:00:00Z",
+        crawled_at: "2026-10-10T00:00:00Z",
+        locations: ["Worldwide"],
+        salary: "$150k",
+        tags: ["go", "backend"],
+        status: "active",
+      },
+      markdownContent: "Go developer",
+    };
+
+    const docFresh: JobMarkdownDocument = {
+      metadata: {
+        id: "fresh-002",
+        title: "Senior TypeScript Engineer",
+        company: "NewStartup",
+        source: "remoteok",
+        url: "https://remoteok.com/fresh-002",
+        posted_at: "2026-10-09T00:00:00Z",
+        crawled_at: "2026-10-10T00:00:00Z",
+        locations: ["Worldwide"],
+        salary: "$140k",
+        tags: ["typescript"],
+        status: "active",
+      },
+      markdownContent: "TypeScript engineer",
+    };
+
+    saveJobDocument(docEvaluated, TEST_DIR);
+    saveJobDocument(docFresh, TEST_DIR);
+
+    // Write a report marking eval-001 as evaluated
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "report.md"),
+      `### 1. [Senior Go Developer](https://remoteok.com/eval-001)\n- Company: Sticker Mule\n- Source: RemoteOK (\`eval-001\`)`,
+      "utf-8"
+    );
+
+    // 1. With excludeMatched: true
+    const excludedResults = searchJDs({
+      jdsDir: TEST_DIR,
+      matchesDir: TEST_MATCHES_DIR,
+      months: 2,
+      excludeMatched: true,
+    });
+    expect(excludedResults.length).toBe(1);
+    expect(excludedResults[0].id).toBe("fresh-002");
+    expect(excludedResults[0].isEvaluated).toBe(false);
+
+    // 2. Default prioritization puts fresh job first even though evaluated job was posted later
+    const prioritizedResults = searchJDs({
+      jdsDir: TEST_DIR,
+      matchesDir: TEST_MATCHES_DIR,
+      months: 2,
+      prioritizeUnmatched: true,
+    });
+    expect(prioritizedResults.length).toBe(2);
+    expect(prioritizedResults[0].id).toBe("fresh-002"); // Fresh first
+    expect(prioritizedResults[0].isEvaluated).toBe(false);
+    expect(prioritizedResults[1].id).toBe("eval-001");
+    expect(prioritizedResults[1].isEvaluated).toBe(true);
+  });
+});
+

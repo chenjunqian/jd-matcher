@@ -23,6 +23,24 @@ export interface CrawlOptions {
   outDir?: string;
 }
 
+export interface EvaluatedRecord {
+  id?: string;
+  url?: string;
+  title: string;
+  company: string;
+  localPath?: string;
+  status: "matched" | "rejected";
+  reportFile: string;
+}
+
+export interface EvaluatedJobIndex {
+  urls: Set<string>;
+  ids: Set<string>;
+  fileNames: Set<string>;
+  companyTitleKeys: Set<string>;
+  records: EvaluatedRecord[];
+}
+
 export interface SearchOptions {
   months?: number; // How many months back to search (default 2)
   tags?: string[];
@@ -30,6 +48,11 @@ export interface SearchOptions {
   location?: string;
   limit?: number;
   jdsDir?: string;
+  matchesDir?: string; // Directory containing match reports (default data/matches)
+  excludeMatched?: boolean; // Exclude jobs that have already been evaluated in past reports
+  unmatchedOnly?: boolean; // Alias for excludeMatched
+  prioritizeUnmatched?: boolean; // Prioritize fresh unmatched jobs ahead of evaluated ones (default true)
+  includeMatched?: boolean; // Do not prioritize unmatched jobs, sort purely by date
 }
 
 export interface SearchResultItem {
@@ -45,4 +68,7 @@ export interface SearchResultItem {
   filePath: string;
   relPath: string;
   scoreMatchReason?: string;
+  isEvaluated?: boolean;
+  evaluationStatus?: "unmatched" | "matched" | "rejected";
+  evaluatedInReport?: string;
 }
