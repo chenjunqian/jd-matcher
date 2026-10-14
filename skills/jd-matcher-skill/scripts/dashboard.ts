@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { exec } from "node:child_process";
-import { parseFrontmatter } from "./utils.ts";
+import { parseFrontmatter, normalizeUrl, normalizeKey } from "./utils.ts";
 
 export interface CrawledJobSummary {
   id: string;
@@ -19,6 +19,12 @@ export interface CrawledJobSummary {
   relPath: string;
 }
 
+export interface EvaluationHistoryEntry {
+  date: string;
+  score: number;
+  reportFile: string;
+}
+
 export interface MatchedJobRecord {
   id: string;
   title: string;
@@ -26,7 +32,16 @@ export interface MatchedJobRecord {
   source: string;
   url: string;
   postedAt: string;
+  /** Date of the newest evaluation that produced this record */
   evaluatedAt: string;
+  /** Date this job was first recommended in any report */
+  firstSeenAt: string;
+  /** How many reports recommended this job (incl. repeats) */
+  timesEvaluated: number;
+  /** Per-report evaluation history, newest first */
+  history: EvaluationHistoryEntry[];
+  /** Report file that provided the current (newest) record */
+  reportFile: string;
   locations: string[];
   salary: string;
   matchScore: number;
@@ -39,6 +54,17 @@ export interface RejectionRecord {
   title: string;
   company: string;
   reason: string;
+  evaluatedAt: string;
+  firstSeenAt: string;
+  timesSeen: number;
+  reportFile: string;
+}
+
+export interface ReportSummary {
+  date: string;
+  file: string;
+  matched: number;
+  rejected: number;
 }
 
 export interface DashboardDataBundle {
@@ -49,7 +75,11 @@ export interface DashboardDataBundle {
     topMatches: number;
     avgScore: string;
     totalVetoed: number;
+    totalReports: number;
+    /** "firstEvaluation → latestEvaluation" across all history */
+    historySpan: string;
   };
+  reports: ReportSummary[];
   matches: MatchedJobRecord[];
   rejections: RejectionRecord[];
   crawledJds: CrawledJobSummary[];
@@ -105,98 +135,170 @@ export function getAllCrawledJds(jdsDir = DEFAULT_JDS_DIR): CrawledJobSummary[] 
   return list.sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
 }
 
+interface RawMatchEntry {
+  title: string;
+  company: string;
+  source: string;
+  url: string;
+  postedAt: string;
+  locations: string[];
+  salary: string;
+  matchScore: number;
+  whyMatch: string;
+  tips: string;
+  localPath?: string;
+  evaluatedAt: string;
+  reportFile: string;
+}
+
+interface RawRejectionEntry {
+  title: string;
+  company: string;
+  reason: string;
+  url?: string;
+  evaluatedAt: string;
+  reportFile: string;
+}
+
 /**
- * Parse markdown report files in data/matches/*.md into structured records
+ * Recursively collect every markdown report under a directory
+ * (including archive/ subfolders), skipping example templates.
  */
-export function parseReportsFromDir(dirPath: string): {
+export function collectReportFiles(dirPath: string): string[] {
+  const results: string[] = [];
+  if (!fs.existsSync(dirPath)) return results;
+
+  const walk = (current: string) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      if (entry.name.startsWith(".")) continue;
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (
+        entry.isFile() &&
+        entry.name.endsWith(".md") &&
+        !entry.name.endsWith(".example.md")
+      ) {
+        results.push(full);
+      }
+    }
+  };
+
+  walk(dirPath);
+  return results.sort();
+}
+
+/** Deterministic short id derived from URL (or company+title fallback) */
+function stableJobId(url: string, company: string, title: string): string {
+  const basis =
+    normalizeUrl(url) || `${normalizeKey(company)}:::${normalizeKey(title)}` || title;
+  let hash = 5381;
+  for (let i = 0; i < basis.length; i++) {
+    hash = ((hash << 5) + hash + basis.charCodeAt(i)) >>> 0;
+  }
+  return `job-${hash.toString(36)}`;
+}
+
+/** Resolve a report's evaluation date: filename first, then content, then mtime */
+function resolveEvaluatedAt(content: string, reportRelPath: string, fullPath: string): string {
+  const fromName = path.basename(reportRelPath).match(/(\d{4}-\d{2}-\d{2})/);
+  if (fromName) return fromName[1];
+
+  const fromContent = content.match(/(?:评估时间|Evaluation Date)[^\d\n]{0,24}(\d{4}-\d{2}-\d{2})/i);
+  if (fromContent) return fromContent[1];
+
+  try {
+    return fs.statSync(fullPath).mtime.toISOString().split("T")[0];
+  } catch {
+    return "Unknown";
+  }
+}
+
+/** Compare evaluations: positive when `a` is newer (date desc, then filename desc) */
+function compareEvaluation(aDate: string, aFile: string, bDate: string, bFile: string): number {
+  if (aDate !== bDate) return aDate > bDate ? 1 : -1;
+  if (aFile === bFile) return 0;
+  return aFile > bFile ? 1 : -1;
+}
+
+/** Format a Date as a local (not UTC) YYYY-MM-DD string */
+export function formatLocalDate(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Parse all markdown reports (recursively, including archive/) into a cumulative,
+ * deduplicated history. When a job appears in multiple reports the newest
+ * evaluation wins, while the full per-report history is preserved.
+ */
+export function parseAllReports(matchesDir: string = DEFAULT_MATCHES_DIR): {
   matches: MatchedJobRecord[];
   rejections: RejectionRecord[];
+  reports: ReportSummary[];
 } {
-  const matches: MatchedJobRecord[] = [];
-  const rejections: RejectionRecord[] = [];
+  const reports: ReportSummary[] = [];
+  const rawMatches: RawMatchEntry[] = [];
+  const rawRejections: RawRejectionEntry[] = [];
 
-  if (!fs.existsSync(dirPath)) return { matches, rejections };
-
-  const allMd = fs.readdirSync(dirPath).filter((f) => f.endsWith(".md"));
-  const actualReports = allMd.filter((f) => !f.endsWith(".example.md"));
-  const files = actualReports.length > 0 ? actualReports : allMd;
-
-  for (const file of files) {
-    const fullPath = path.join(dirPath, file);
+  for (const fullPath of collectReportFiles(matchesDir)) {
+    const reportFile = path.relative(process.cwd(), fullPath);
     const content = fs.readFileSync(fullPath, "utf-8");
-    const evalDateMatch = content.match(/评估时间|Evaluation Date[:\s]*([0-9-]+)/i);
-    const evaluatedAt = evalDateMatch ? evalDateMatch[1] : file.slice(0, 10);
+    const evaluatedAt = resolveEvaluatedAt(content, reportFile, fullPath);
+    let matchedCount = 0;
+    let rejectedCount = 0;
 
-    // Parse Job Sections
+    // --- Matched job sections: "### 1. [Title](url)" ---
     const jobBlocks = content.split(/###\s+\d+\.\s+/).slice(1);
     for (const block of jobBlocks) {
       const titleMatch = block.match(/\[(.*?)\]\((.*?)\)/);
       if (!titleMatch) continue;
 
-      const title = titleMatch[1].trim();
-      const url = titleMatch[2].trim();
-
       const companyMatch = block.match(/(?:Company|公司)[:\s*]+([^\n\r*]+)/i);
-      const company = companyMatch ? companyMatch[1].trim() : "Unknown";
-
       const sourceMatch = block.match(/(?:Source|来源)[:\s*]+([^\n\r*]+)/i);
-      const source = sourceMatch ? sourceMatch[1].trim() : "RemoteOK";
-
       const postedMatch = block.match(/(?:Posted|发布时间)[:\s*]+([^\n\r*]+)/i);
-      const postedAt = postedMatch ? postedMatch[1].trim() : "Recent";
-
       const locMatch = block.match(/(?:Locations?|地点要求)[:\s*]+([^\n\r*]+)/i);
-      const locations = locMatch
-        ? locMatch[1].split(/[,，]/).map((s) => s.trim())
-        : ["Worldwide"];
-
       const salMatch = block.match(/(?:Salary|公开薪酬)[:\s*]+([^\n\r*]+)/i);
-      const salary = salMatch ? salMatch[1].trim() : "Not specified";
-
       const scoreMatch = block.match(/(?:Match Score|匹配得分)[:\s*]+(?:\*\*)?([0-9.]+)/i);
-      const matchScore = scoreMatch ? parseFloat(scoreMatch[1]) : 7.0;
-
       const localPathMatch = block.match(/(?:Local File|本地归档)[:\s*]+`?([^\n\r`]+)`?/i);
-      const localPath = localPathMatch ? localPathMatch[1].trim() : undefined;
-
       const whyMatchBlock = block.match(
         /(?:Why Match|核心契合点)[^:]*[:\s*]+([\s\S]*?)(?=(?:投递与面试建议|Application Tips|###|$))/i
       );
-      const whyMatch = whyMatchBlock
-        ? whyMatchBlock[1]
-            .split("\n")
-            .map((l) => l.replace(/^[-*]\s*/, "").trim())
-            .filter(Boolean)
-            .join(" ")
-        : "Strong alignment with candidate stack and experience.";
-
       const tipsBlock = block.match(/(?:Application Tips|投递与面试建议)[^:]*[:\s*]+([\s\S]*?)(?=(?:###|##|$))/i);
-      const tips = tipsBlock
-        ? tipsBlock[1]
-            .split("\n")
-            .map((l) => l.replace(/^[-*]\s*/, "").trim())
-            .filter(Boolean)
-            .join(" ")
-        : "Tailor resume highlights for this specific JD.";
 
-      matches.push({
-        id: `job-${matches.length + 1}`,
-        title,
-        company,
-        source,
-        url,
-        postedAt,
+      rawMatches.push({
+        title: titleMatch[1].trim(),
+        url: titleMatch[2].trim(),
+        company: companyMatch ? companyMatch[1].trim() : "Unknown",
+        source: sourceMatch ? sourceMatch[1].trim() : "RemoteOK",
+        postedAt: postedMatch ? postedMatch[1].trim() : "Recent",
+        locations: locMatch ? locMatch[1].split(/[,，]/).map((s) => s.trim()) : ["Worldwide"],
+        salary: salMatch ? salMatch[1].trim() : "Not specified",
+        matchScore: scoreMatch ? parseFloat(scoreMatch[1]) : 7.0,
+        localPath: localPathMatch ? localPathMatch[1].trim() : undefined,
+        whyMatch: whyMatchBlock
+          ? whyMatchBlock[1]
+              .split("\n")
+              .map((l) => l.replace(/^[-*]\s*/, "").trim())
+              .filter(Boolean)
+              .join(" ")
+          : "Strong alignment with candidate stack and experience.",
+        tips: tipsBlock
+          ? tipsBlock[1]
+              .split("\n")
+              .map((l) => l.replace(/^[-*]\s*/, "").trim())
+              .filter(Boolean)
+              .join(" ")
+          : "Tailor resume highlights for this specific JD.",
         evaluatedAt,
-        locations,
-        salary,
-        matchScore,
-        whyMatch,
-        tips,
-        localPath,
+        reportFile,
       });
+      matchedCount++;
     }
 
-    // Parse Rejection Table rows
+    // --- Hard gate rejection table rows ---
     const lines = content.split("\n");
     let inRejectionSection = false;
     for (const line of lines) {
@@ -207,41 +309,264 @@ export function parseReportsFromDir(dirPath: string): {
       if (inRejectionSection && line.startsWith("## ")) {
         inRejectionSection = false;
       }
-      if (inRejectionSection && line.startsWith("|") && !line.includes("---") && !line.includes("公司")) {
-        const cols = line.split("|").map((s) => s.trim()).filter(Boolean);
-        if (cols.length >= 3 && !cols[0].toLowerCase().includes("title") && !cols[0].toLowerCase().includes("职位")) {
-          rejections.push({
-            title: cols[0],
-            company: cols[1],
-            reason: cols[2].replace(/^[❌⛔\s]+/, ""),
-          });
-        }
+      if (!inRejectionSection || !line.startsWith("|") || line.includes("---")) continue;
+
+      const cols = line.split("|").map((s) => s.trim()).filter(Boolean);
+      if (cols.length < 3) continue;
+      const firstCol = cols[0].replace(/[*_]/g, "").trim();
+      const lower = firstCol.toLowerCase();
+      if (lower.includes("title") || firstCol.includes("职位") || firstCol.includes("公司")) continue;
+
+      let title = firstCol;
+      let url: string | undefined;
+      const linkMatch = firstCol.match(/\[(.*?)\]\((.*?)\)/);
+      if (linkMatch) {
+        title = linkMatch[1].trim();
+        url = linkMatch[2].trim();
       }
+
+      rawRejections.push({
+        title,
+        company: cols[1].replace(/[*_]/g, "").trim(),
+        reason: (cols[2] || "Hard constraint veto").replace(/^[❌⛔\s]+/, "").trim(),
+        url,
+        evaluatedAt,
+        reportFile,
+      });
+      rejectedCount++;
     }
+
+    reports.push({ date: evaluatedAt, file: reportFile, matched: matchedCount, rejected: rejectedCount });
   }
 
-  // Also read records.json if present
-  const jsonPath = path.join(dirPath, "records.json");
-  if (fs.existsSync(jsonPath)) {
+  // Optional machine-readable ledgers (records.json / history.json)
+  for (const jsonName of ["records.json", "history.json"]) {
+    const jsonPath = path.join(matchesDir, jsonName);
+    if (!fs.existsSync(jsonPath)) continue;
     try {
-      const extra = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
-      if (Array.isArray(extra)) {
-        matches.push(...extra);
+      const items = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+      if (!Array.isArray(items)) continue;
+      for (const item of items) {
+        const evaluatedAt =
+          String(item.evaluatedAt || item.date || "").slice(0, 10) || formatLocalDate();
+        if (item.status === "rejected") {
+          rawRejections.push({
+            title: item.title || "",
+            company: item.company || "",
+            reason: item.reason || "Hard constraint veto",
+            url: item.url,
+            evaluatedAt,
+            reportFile: jsonName,
+          });
+        } else {
+          rawMatches.push({
+            title: item.title || "",
+            company: item.company || "",
+            source: item.source || "unknown",
+            url: item.url || "",
+            postedAt: item.postedAt || "Recent",
+            locations: item.locations || ["Worldwide"],
+            salary: item.salary || "Not specified",
+            matchScore: Number(item.matchScore) || 7.0,
+            whyMatch: item.whyMatch || "Strong alignment with candidate stack and experience.",
+            tips: item.tips || "Tailor resume highlights for this specific JD.",
+            localPath: item.localPath,
+            evaluatedAt,
+            reportFile: jsonName,
+          });
+        }
       }
     } catch {
       // ignore malformed json
     }
   }
 
-  // Deduplicate matches by URL
-  const seen = new Set<string>();
-  const uniqueMatches = matches.filter((m) => {
-    if (seen.has(m.url)) return false;
-    seen.add(m.url);
-    return true;
-  });
+  // ---- Merge matches: newest evaluation wins, full history preserved ----
+  const matchByKey = new Map<string, MatchedJobRecord>();
+  for (const raw of rawMatches) {
+    const key =
+      normalizeUrl(raw.url) || `${normalizeKey(raw.company)}:::${normalizeKey(raw.title)}`;
+    const entry: EvaluationHistoryEntry = {
+      date: raw.evaluatedAt,
+      score: raw.matchScore,
+      reportFile: raw.reportFile,
+    };
+    const existing = matchByKey.get(key);
 
-  return { matches: uniqueMatches, rejections };
+    if (!existing) {
+      matchByKey.set(key, {
+        id: stableJobId(raw.url, raw.company, raw.title),
+        title: raw.title,
+        company: raw.company,
+        source: raw.source,
+        url: raw.url,
+        postedAt: raw.postedAt,
+        evaluatedAt: raw.evaluatedAt,
+        firstSeenAt: raw.evaluatedAt,
+        timesEvaluated: 1,
+        history: [entry],
+        reportFile: raw.reportFile,
+        locations: raw.locations,
+        salary: raw.salary,
+        matchScore: raw.matchScore,
+        whyMatch: raw.whyMatch,
+        tips: raw.tips,
+        localPath: raw.localPath,
+      });
+      continue;
+    }
+
+    if (!existing.history.some((h) => h.date === entry.date && h.reportFile === entry.reportFile)) {
+      existing.history.push(entry);
+    }
+    existing.history.sort((a, b) =>
+      compareEvaluation(b.date, b.reportFile, a.date, a.reportFile)
+    );
+    existing.timesEvaluated = existing.history.length;
+    existing.firstSeenAt = existing.history.reduce(
+      (min, h) => (h.date < min ? h.date : min),
+      existing.history[0].date
+    );
+
+    if (compareEvaluation(raw.evaluatedAt, raw.reportFile, existing.evaluatedAt, existing.reportFile) > 0) {
+      const history = existing.history;
+      const id = existing.id;
+      Object.assign(existing, {
+        id,
+        history,
+        title: raw.title,
+        company: raw.company,
+        source: raw.source,
+        url: raw.url,
+        postedAt: raw.postedAt,
+        evaluatedAt: raw.evaluatedAt,
+        reportFile: raw.reportFile,
+        locations: raw.locations,
+        salary: raw.salary,
+        matchScore: raw.matchScore,
+        whyMatch: raw.whyMatch,
+        tips: raw.tips,
+        localPath: raw.localPath,
+      });
+    }
+  }
+
+  // ---- Merge rejections: newest reason wins, repeat count preserved ----
+  const rejectionByKey = new Map<string, RejectionRecord>();
+  for (const raw of rawRejections) {
+    const key = `${normalizeKey(raw.company)}:::${normalizeKey(raw.title)}`;
+    const existing = rejectionByKey.get(key);
+
+    if (!existing) {
+      rejectionByKey.set(key, {
+        title: raw.title,
+        company: raw.company,
+        reason: raw.reason,
+        evaluatedAt: raw.evaluatedAt,
+        firstSeenAt: raw.evaluatedAt,
+        timesSeen: 1,
+        reportFile: raw.reportFile,
+      });
+      continue;
+    }
+
+    existing.timesSeen += 1;
+    if (raw.evaluatedAt < existing.firstSeenAt) existing.firstSeenAt = raw.evaluatedAt;
+    if (compareEvaluation(raw.evaluatedAt, raw.reportFile, existing.evaluatedAt, existing.reportFile) > 0) {
+      existing.title = raw.title;
+      existing.company = raw.company;
+      existing.reason = raw.reason;
+      existing.evaluatedAt = raw.evaluatedAt;
+      existing.reportFile = raw.reportFile;
+    }
+  }
+
+  // ---- Secondary dedupe: the same job cross-posted under different URLs ----
+  // (e.g. RemoteOK mirror vs. the company's own careers page) is merged by
+  // normalized company + title, keeping the newest evaluation's details.
+  const byCompanyTitle = new Map<string, MatchedJobRecord[]>();
+  for (const match of matchByKey.values()) {
+    const key = `${normalizeKey(match.company)}:::${normalizeKey(match.title)}`;
+    const group = byCompanyTitle.get(key);
+    if (group) group.push(match);
+    else byCompanyTitle.set(key, [match]);
+  }
+
+  for (const group of byCompanyTitle.values()) {
+    if (group.length < 2) continue;
+    group.sort((a, b) =>
+      compareEvaluation(b.evaluatedAt, b.reportFile, a.evaluatedAt, a.reportFile)
+    );
+    const winner = group[0];
+    for (const loser of group.slice(1)) {
+      for (const entry of loser.history) {
+        if (!winner.history.some((h) => h.date === entry.date && h.reportFile === entry.reportFile)) {
+          winner.history.push(entry);
+        }
+      }
+      const loserKey =
+        normalizeUrl(loser.url) || `${normalizeKey(loser.company)}:::${normalizeKey(loser.title)}`;
+      matchByKey.delete(loserKey);
+    }
+    winner.history.sort((a, b) =>
+      compareEvaluation(b.date, b.reportFile, a.date, a.reportFile)
+    );
+    winner.timesEvaluated = winner.history.length;
+    winner.firstSeenAt = winner.history.reduce(
+      (min, h) => (h.date < min ? h.date : min),
+      winner.history[0].date
+    );
+  }
+
+  // ---- Cross-status resolution: the newest evaluation decides matched vs rejected ----
+  for (const [key, match] of [...matchByKey.entries()]) {
+    const rejectionKey = `${normalizeKey(match.company)}:::${normalizeKey(match.title)}`;
+    const rejection = rejectionByKey.get(rejectionKey);
+    if (!rejection) continue;
+    if (
+      compareEvaluation(rejection.evaluatedAt, rejection.reportFile, match.evaluatedAt, match.reportFile) > 0
+    ) {
+      matchByKey.delete(key);
+    } else {
+      rejectionByKey.delete(rejectionKey);
+    }
+  }
+
+  const matches = [...matchByKey.values()].sort((a, b) => b.matchScore - a.matchScore);
+  const rejections = [...rejectionByKey.values()].sort((a, b) =>
+    compareEvaluation(b.evaluatedAt, b.reportFile, a.evaluatedAt, a.reportFile)
+  );
+  reports.sort((a, b) => compareEvaluation(b.date, b.file, a.date, a.file));
+
+  return { matches, rejections, reports };
+}
+
+/**
+ * Backwards-compatible wrapper around parseAllReports (flat matches/rejections).
+ * @deprecated Use parseAllReports() to also get the report timeline.
+ */
+export function parseReportsFromDir(dirPath: string): {
+  matches: MatchedJobRecord[];
+  rejections: RejectionRecord[];
+} {
+  const { matches, rejections } = parseAllReports(dirPath);
+  return { matches, rejections };
+}
+
+/**
+ * Compute the "first → latest" evaluation span across all historical matches
+ */
+export function computeHistorySpan(matches: MatchedJobRecord[]): string {
+  if (matches.length === 0) return "—";
+  const first = matches.reduce(
+    (min, m) => (m.firstSeenAt < min ? m.firstSeenAt : min),
+    matches[0].firstSeenAt
+  );
+  const latest = matches.reduce(
+    (max, m) => (m.evaluatedAt > max ? m.evaluatedAt : max),
+    matches[0].evaluatedAt
+  );
+  return `${first} → ${latest}`;
 }
 
 /**
@@ -251,7 +576,7 @@ export function buildDashboardDataBundle(
   matchesDir = DEFAULT_MATCHES_DIR,
   jdsDir = DEFAULT_JDS_DIR
 ): DashboardDataBundle {
-  const { matches, rejections } = parseReportsFromDir(matchesDir);
+  const { matches, rejections, reports } = parseAllReports(matchesDir);
   const crawledJds = getAllCrawledJds(jdsDir);
 
   const sortedMatches = [...matches].sort((a, b) => b.matchScore - a.matchScore);
@@ -259,7 +584,7 @@ export function buildDashboardDataBundle(
   const avgScore = sortedMatches.length
     ? (sortedMatches.reduce((acc, m) => acc + m.matchScore, 0) / sortedMatches.length).toFixed(1)
     : "0.0";
-  const updatedAt = new Date().toISOString().split("T")[0];
+  const updatedAt = formatLocalDate();
 
   return {
     updatedAt,
@@ -269,7 +594,10 @@ export function buildDashboardDataBundle(
       topMatches,
       avgScore,
       totalVetoed: rejections.length,
+      totalReports: reports.length,
+      historySpan: computeHistorySpan(sortedMatches),
     },
+    reports,
     matches: sortedMatches,
     rejections,
     crawledJds,
@@ -282,14 +610,15 @@ export function buildDashboardDataBundle(
 export function generateDashboardHtml(
   matches: MatchedJobRecord[] = [],
   rejections: RejectionRecord[] = [],
-  crawledJds: CrawledJobSummary[] = []
+  crawledJds: CrawledJobSummary[] = [],
+  reports: ReportSummary[] = []
 ): string {
   const sortedMatches = [...matches].sort((a, b) => b.matchScore - a.matchScore);
   const topMatches = sortedMatches.filter((m) => m.matchScore >= 8.5).length;
   const avgScore = sortedMatches.length
     ? (sortedMatches.reduce((acc, m) => acc + m.matchScore, 0) / sortedMatches.length).toFixed(1)
     : "0.0";
-  const updatedAt = new Date().toISOString().split("T")[0];
+  const updatedAt = formatLocalDate();
 
   const initialBundle: DashboardDataBundle = {
     updatedAt,
@@ -299,7 +628,10 @@ export function generateDashboardHtml(
       topMatches,
       avgScore,
       totalVetoed: rejections.length,
+      totalReports: reports.length,
+      historySpan: computeHistorySpan(sortedMatches),
     },
+    reports,
     matches: sortedMatches,
     rejections,
     crawledJds,
@@ -760,13 +1092,20 @@ export function generateDashboardHtml(
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 16px;
       font-family: var(--sans);
+    }
+    /* Left metadata block shrinks/truncates instead of squeezing the button */
+    .card-footer > div {
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
     }
     .path-label {
       font-family: var(--mono);
       font-size: 11px;
       color: var(--stone);
-      max-width: 240px;
+      max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -784,6 +1123,8 @@ export function generateDashboardHtml(
       border-radius: 999px;
       border: none;
       cursor: pointer;
+      white-space: nowrap;
+      flex: 0 0 auto;
       transition: background 0.15s, transform 0.1s;
     }
     .btn-primary:hover {
@@ -855,6 +1196,93 @@ export function generateDashboardHtml(
     }
     .empty-icon { font-size: 28px; margin-bottom: 8px; }
 
+    /* Evaluation date grouping (cumulative history) */
+    .date-section { margin-bottom: 44px; }
+    .date-section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .date-heading {
+      font-size: 19px;
+      font-weight: 500;
+      color: var(--near-black);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.2px;
+    }
+    .date-hint {
+      font-family: var(--sans);
+      font-size: 12px;
+      color: var(--stone);
+      min-width: 0;
+      max-width: 46%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .date-count {
+      font-family: var(--sans);
+      font-size: 12px;
+      color: var(--stone);
+      margin-left: auto;
+    }
+    .date-section .cards-grid { margin-bottom: 0; }
+    .repeat-badge {
+      display: inline-block;
+      background: var(--brand-tint);
+      color: var(--brand);
+      border: 1px solid var(--tag-bg);
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-family: var(--sans);
+      font-size: 10.5px;
+      font-weight: 600;
+      margin-top: 5px;
+    }
+    .eval-chip {
+      font-family: var(--sans);
+      font-size: 11px;
+      color: var(--stone);
+      margin-top: 6px;
+      line-height: 1.5;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    /* Report timeline */
+    .history-list { display: flex; flex-direction: column; gap: 10px; }
+    .history-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--parchment);
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: var(--sans);
+      font-size: 13px;
+      color: var(--dark-warm);
+    }
+    .history-date {
+      font-weight: 600;
+      color: var(--brand);
+      font-variant-numeric: tabular-nums;
+      min-width: 92px;
+    }
+    .history-file {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--stone);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .history-counts { display: flex; gap: 8px; }
+
     footer {
       border-top: 1px solid var(--border);
       margin-top: 56px;
@@ -920,6 +1348,16 @@ export function generateDashboardHtml(
         <div id="statVetoed" class="metric-value" style="color: var(--breaking-fg);">0</div>
         <div class="metric-note">Excluded via constraints</div>
       </div>
+      <div class="metric-card">
+        <div class="metric-label">Reports Aggregated</div>
+        <div id="statReports" class="metric-value">0</div>
+        <div class="metric-note">data/matches (incl. archive/)</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">History Span</div>
+        <div id="statSpan" class="metric-value" style="font-size: 19px; line-height: 1.5;">—</div>
+        <div class="metric-note">First → latest evaluation</div>
+      </div>
     </div>
 
     <!-- Tab Navigation -->
@@ -931,6 +1369,10 @@ export function generateDashboardHtml(
       <button class="tab-btn" data-tab="crawled">
         <span>📚 All Crawled Jobs</span>
         <span id="badgeCrawled" class="tab-badge">0</span>
+      </button>
+      <button class="tab-btn" data-tab="history">
+        <span>📜 Evaluation History</span>
+        <span id="badgeHistory" class="tab-badge">0</span>
       </button>
       <button class="tab-btn" data-tab="audit">
         <span>⛔ Excluded Audit Log</span>
@@ -957,9 +1399,9 @@ export function generateDashboardHtml(
       <span id="resultsCount" class="results-count">0 items</span>
     </div>
 
-    <!-- Tab View 1: Matched Recommendations -->
+    <!-- Tab View 1: Matched Recommendations (grouped by evaluation date) -->
     <section id="matchesView" class="tab-view active">
-      <div id="matchesGrid" class="cards-grid"></div>
+      <div id="matchesGrid"></div>
     </section>
 
     <!-- Tab View 2: All Crawled Jobs in Knowledge Base -->
@@ -967,7 +1409,18 @@ export function generateDashboardHtml(
       <div id="crawledGrid" class="cards-grid"></div>
     </section>
 
-    <!-- Tab View 3: Veto Audit Log -->
+    <!-- Tab View 3: Evaluation History (report timeline) -->
+    <section id="historyView" class="tab-view">
+      <div class="audit-section">
+        <div class="audit-header">
+          <h2 class="audit-title">Match Report Timeline</h2>
+          <span id="historyCountBadge" class="tab-badge">0 reports</span>
+        </div>
+        <div id="historyList" class="history-list"></div>
+      </div>
+    </section>
+
+    <!-- Tab View 4: Veto Audit Log -->
     <section id="auditView" class="tab-view">
       <div class="audit-section">
         <div class="audit-header">
@@ -1018,7 +1471,8 @@ ${initialBundleJson}
       if (!db) {
         db = {
           updatedAt: new Date().toISOString().split('T')[0],
-          stats: { totalCrawled: 0, totalMatched: 0, topMatches: 0, avgScore: "0.0", totalVetoed: 0 },
+          stats: { totalCrawled: 0, totalMatched: 0, topMatches: 0, avgScore: "0.0", totalVetoed: 0, totalReports: 0, historySpan: "—" },
+          reports: [],
           matches: [],
           rejections: [],
           crawledJds: []
@@ -1030,12 +1484,16 @@ ${initialBundleJson}
       const statTop = document.getElementById('statTop');
       const statCrawled = document.getElementById('statCrawled');
       const statVetoed = document.getElementById('statVetoed');
+      const statReports = document.getElementById('statReports');
+      const statSpan = document.getElementById('statSpan');
       const datePill = document.getElementById('datePill');
 
       const badgeMatched = document.getElementById('badgeMatched');
       const badgeCrawled = document.getElementById('badgeCrawled');
+      const badgeHistory = document.getElementById('badgeHistory');
       const badgeAudit = document.getElementById('badgeAudit');
       const auditCountBadge = document.getElementById('auditCountBadge');
+      const historyCountBadge = document.getElementById('historyCountBadge');
 
       const searchInput = document.getElementById('searchInput');
       const scoreFilter = document.getElementById('scoreFilter');
@@ -1045,6 +1503,7 @@ ${initialBundleJson}
       const matchesGrid = document.getElementById('matchesGrid');
       const crawledGrid = document.getElementById('crawledGrid');
       const auditTableBody = document.getElementById('auditTableBody');
+      const historyList = document.getElementById('historyList');
 
       let currentTab = 'matches';
 
@@ -1064,55 +1523,35 @@ ${initialBundleJson}
         statTop.textContent = db.matches.filter(m => m.matchScore >= 8.5).length;
         statCrawled.textContent = db.crawledJds.length;
         statVetoed.textContent = db.rejections.length;
+        statReports.textContent = (db.reports || []).length;
+        statSpan.textContent = (db.stats && db.stats.historySpan) || '—';
         if (db.updatedAt) datePill.textContent = 'Updated: ' + db.updatedAt;
 
         badgeMatched.textContent = db.matches.length;
         badgeCrawled.textContent = db.crawledJds.length;
+        badgeHistory.textContent = (db.reports || []).length;
         badgeAudit.textContent = db.rejections.length;
         auditCountBadge.textContent = db.rejections.length + ' JDs vetoed';
       }
 
-      // Render Matched Recommendations View
-      function renderMatches() {
-        const query = (searchInput.value || '').toLowerCase().trim();
-        const minScore = parseFloat(scoreFilter.value) || 0;
-
-        const filtered = db.matches.filter(job => {
-          const title = (job.title || '').toLowerCase();
-          const comp = (job.company || '').toLowerCase();
-          const why = (job.whyMatch || '').toLowerCase();
-          const locs = (job.locations || []).join(' ').toLowerCase();
-
-          const matchesQuery = !query || title.includes(query) || comp.includes(query) || why.includes(query) || locs.includes(query);
-          const matchesScore = (job.matchScore || 0) >= minScore;
-          return matchesQuery && matchesScore;
-        });
-
-        resultsCount.textContent = filtered.length + ' matches';
-
-        if (filtered.length === 0) {
-          matchesGrid.innerHTML = \`
-            <div class="empty-state" style="grid-column: 1 / -1;">
-              <div class="empty-icon">🍃</div>
-              <p>No matching recommendations found for current filters.</p>
-            </div>
-          \`;
-          return;
+      // Build a single matched-job card
+      function renderMatchCard(job) {
+        let scoreBadgeStyle = "background: #e8e6dc; color: #3d3d3a; border: 1px solid #d8d5c8;";
+        if (job.matchScore >= 9.0) {
+          scoreBadgeStyle = "background: #1B365D; color: #faf9f5; border: 1px solid #1B365D;";
+        } else if (job.matchScore >= 8.0) {
+          scoreBadgeStyle = "background: #E4ECF5; color: #1B365D; border: 1px solid #c7d8eb;";
         }
 
-        matchesGrid.innerHTML = filtered.map(job => {
-          let scoreBadgeStyle = "background: #e8e6dc; color: #3d3d3a; border: 1px solid #d8d5c8;";
-          if (job.matchScore >= 9.0) {
-            scoreBadgeStyle = "background: #1B365D; color: #faf9f5; border: 1px solid #1B365D;";
-          } else if (job.matchScore >= 8.0) {
-            scoreBadgeStyle = "background: #E4ECF5; color: #1B365D; border: 1px solid #c7d8eb;";
-          }
+        const locTags = (job.locations || []).slice(0, 3).map(l =>
+          \`<span class="kami-tag" onclick="window.filterByKeyword('\${escapeHtml(l)}')">\${escapeHtml(l)}</span>\`
+        ).join(' ');
 
-          const locTags = (job.locations || []).slice(0, 3).map(l =>
-            \`<span class="kami-tag" onclick="window.filterByKeyword('\${escapeHtml(l)}')">\${escapeHtml(l)}</span>\`
-          ).join(' ');
+        const repeatBadge = (job.timesEvaluated || 1) > 1
+          ? \`<span class="repeat-badge" title="Recommended in \${job.timesEvaluated} reports">↻ \${job.timesEvaluated}× evaluated</span>\`
+          : '';
 
-          return \`
+        return \`
             <div class="kami-card">
               <div class="card-body">
                 <div class="card-header-row">
@@ -1125,6 +1564,7 @@ ${initialBundleJson}
                   <div class="score-container">
                     <span class="score-badge" style="\${scoreBadgeStyle}">\${Number(job.matchScore).toFixed(1)} / 10</span>
                     <span class="date-label">\${escapeHtml(job.postedAt)}</span>
+                    \${repeatBadge}
                   </div>
                 </div>
 
@@ -1146,7 +1586,10 @@ ${initialBundleJson}
               </div>
 
               <div class="card-footer">
-                <div class="path-label">\${escapeHtml(job.localPath || '')}</div>
+                <div>
+                  <div class="path-label">\${escapeHtml(job.localPath || '')}</div>
+                  <div class="eval-chip">Evaluated \${escapeHtml(job.evaluatedAt || '')}\${job.reportFile ? ' · ' + escapeHtml(job.reportFile) : ''}</div>
+                </div>
                 <a href="\${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer" class="btn-primary">
                   <span>Apply Now</span>
                   <span class="arrow">↗</span>
@@ -1154,7 +1597,93 @@ ${initialBundleJson}
               </div>
             </div>
           \`;
-        }).join('');
+      }
+
+      // Render Matched Recommendations View, grouped by evaluation date (newest run first)
+      function renderMatches() {
+        const query = (searchInput.value || '').toLowerCase().trim();
+        const minScore = parseFloat(scoreFilter.value) || 0;
+
+        const filtered = db.matches.filter(job => {
+          const title = (job.title || '').toLowerCase();
+          const comp = (job.company || '').toLowerCase();
+          const why = (job.whyMatch || '').toLowerCase();
+          const locs = (job.locations || []).join(' ').toLowerCase();
+
+          const matchesQuery = !query || title.includes(query) || comp.includes(query) || why.includes(query) || locs.includes(query);
+          const matchesScore = (job.matchScore || 0) >= minScore;
+          return matchesQuery && matchesScore;
+        });
+
+        resultsCount.textContent = filtered.length + ' matches';
+
+        if (filtered.length === 0) {
+          matchesGrid.innerHTML = \`
+            <div class="empty-state">
+              <div class="empty-icon">🍃</div>
+              <p>No matching recommendations found for current filters.</p>
+            </div>
+          \`;
+          return;
+        }
+
+        const groups = {};
+        filtered.forEach(job => {
+          const date = job.evaluatedAt || 'Unknown date';
+          if (!groups[date]) groups[date] = [];
+          groups[date].push(job);
+        });
+
+        matchesGrid.innerHTML = Object.keys(groups)
+          .sort((a, b) => (a < b ? 1 : -1))
+          .map(date => {
+            const jobs = groups[date].slice().sort((a, b) => b.matchScore - a.matchScore);
+            const reportFiles = Array.from(new Set(jobs.map(j => j.reportFile).filter(Boolean)));
+            const hint = reportFiles.length === 1
+              ? reportFiles[0]
+              : (reportFiles.length ? reportFiles.length + ' reports merged' : '');
+            return \`
+              <section class="date-section">
+                <div class="date-section-header">
+                  <h2 class="date-heading">\${escapeHtml(date)}</h2>
+                  <span class="date-hint">\${escapeHtml(hint)}</span>
+                  <span class="date-count">\${jobs.length} match\${jobs.length > 1 ? 'es' : ''}</span>
+                </div>
+                <div class="cards-grid">\${jobs.map(renderMatchCard).join('')}</div>
+              </section>
+            \`;
+          })
+          .join('');
+      }
+
+      // Render the report timeline (Evaluation History tab)
+      function renderHistory() {
+        const reports = (db.reports || []).slice().sort((a, b) =>
+          (a.date + a.file) < (b.date + b.file) ? 1 : -1
+        );
+        historyCountBadge.textContent = reports.length + ' report' + (reports.length === 1 ? '' : 's');
+        resultsCount.textContent = reports.length + ' reports aggregated';
+
+        if (reports.length === 0) {
+          historyList.innerHTML = \`
+            <div class="empty-state">
+              <div class="empty-icon">📜</div>
+              <p>No match reports found in data/matches (incl. archive/).</p>
+            </div>
+          \`;
+          return;
+        }
+
+        historyList.innerHTML = reports.map(r => \`
+          <div class="history-row">
+            <span class="history-date">\${escapeHtml(r.date)}</span>
+            <span class="history-file" title="\${escapeHtml(r.file)}">\${escapeHtml(r.file)}</span>
+            <span class="history-counts">
+              <span class="breaking-badge" style="background: var(--tag-bg); color: var(--brand);">\${r.matched} matched</span>
+              <span class="breaking-badge">\${r.rejected} vetoed</span>
+            </span>
+          </div>
+        \`).join('');
       }
 
       // Render All Crawled Knowledge Base View
@@ -1272,6 +1801,10 @@ ${initialBundleJson}
           scoreFilter.style.display = 'none';
           sourceFilter.style.display = 'inline-block';
           renderCrawled();
+        } else if (currentTab === 'history') {
+          scoreFilter.style.display = 'none';
+          sourceFilter.style.display = 'none';
+          renderHistory();
         } else if (currentTab === 'audit') {
           scoreFilter.style.display = 'none';
           sourceFilter.style.display = 'none';
@@ -1296,6 +1829,7 @@ ${initialBundleJson}
 
           if (currentTab === 'matches') document.getElementById('matchesView').classList.add('active');
           if (currentTab === 'crawled') document.getElementById('crawledView').classList.add('active');
+          if (currentTab === 'history') document.getElementById('historyView').classList.add('active');
           if (currentTab === 'audit') document.getElementById('auditView').classList.add('active');
 
           updateActiveView();
@@ -1375,13 +1909,20 @@ export function runDashboard(
   fs.writeFileSync(DATA_JS_PATH, jsContent, "utf-8");
 
   // 3. Save dashboard.html (dynamic rendering shell)
-  const html = generateDashboardHtml(bundle.matches, bundle.rejections, bundle.crawledJds);
+  const html = generateDashboardHtml(
+    bundle.matches,
+    bundle.rejections,
+    bundle.crawledJds,
+    bundle.reports
+  );
   fs.writeFileSync(DASHBOARD_OUTPUT_PATH, html, "utf-8");
 
   console.log(`[DASHBOARD] Successfully written:`);
   console.log(`  - HTML Shell:   ${DASHBOARD_OUTPUT_PATH}`);
   console.log(`  - JSON Dataset: ${DATA_JSON_PATH}`);
   console.log(`  - JS Loader:    ${DATA_JS_PATH}`);
+  console.log(`- Reports Aggregated:     ${bundle.stats.totalReports} (incl. archive/)`);
+  console.log(`- History Span:           ${bundle.stats.historySpan}`);
   console.log(`- Total Crawled JDs:      ${bundle.stats.totalCrawled}`);
   console.log(`- Matched Opportunities:  ${bundle.stats.totalMatched}`);
   console.log(`- Excluded JDs:           ${bundle.stats.totalVetoed}`);

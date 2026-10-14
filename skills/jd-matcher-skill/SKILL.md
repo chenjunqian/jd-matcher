@@ -5,7 +5,8 @@ description: >-
   filter recent 2-month opportunities via file system search (find/grep),
   prioritize fresh un-evaluated jobs while excluding already matched/rejected opportunities,
   and evaluate candidate resume and expectations to provide tailored job recommendations.
-  Presents matched results in an interactive Kami-styled HTML dashboard.
+  Presents matched results in an interactive Kami-styled HTML dashboard that accumulates
+  the full evaluation history across every dated report (incl. `archive/`).
   Use when the user wants to fetch latest remote jobs, match remote jobs with their resume,
   or search and recommend job openings locally.
 ---
@@ -46,9 +47,12 @@ data/
 └── matches/                          # Recommendation reports and visual dashboard
     ├── .gitkeep
     ├── sample-report.example.md      # Tracked reference sample report
+    ├── archive/                      # Older dated reports (still aggregated by the dashboard)
+    │   └── YYYY-MM-DD-report.md
     ├── dashboard.html                # Kami-styled interactive visual dashboard (git-ignored)
     ├── data.json / data.js           # Dynamic data bundle for dashboard (git-ignored)
     └── YYYY-MM-DD-report.md          # AI-generated recommendation report (git-ignored)
+                                      # same-day reruns add a suffix: YYYY-MM-DD-report-HHMM.md
 ```
 
 ---
@@ -105,28 +109,29 @@ node skills/jd-matcher-skill/scripts/crawl.ts --source nodesk --limit 20
 ### Step 3: Two-Stage Fast Retrieval & Filtering (Retrieve & Filter)
 
 Filter for fresh opportunities posted within the **last 2 months** matching the candidate's core tech stack and role titles.
-The retrieval engine automatically scans past match reports in `data/matches/` (including `archive/`), tags job evaluation status (`🟢 New`, `⚪ Matched`, `❌ Rejected`), and **prioritizes fresh un-evaluated jobs by default**:
+The retrieval engine scans every past match report in `data/matches/` **recursively (including `archive/`)**, tags job evaluation status (`🟢 New`, `⚪ Matched`, `❌ Rejected`), and **excludes already-evaluated jobs by default** so the same opportunity is never re-evaluated or re-recommended:
 
 ```bash
-# Filter by tech tags within the last 2 months (unmatched jobs prioritized by default)
-node skills/jd-matcher-skill/scripts/search.ts --months 2 --tags typescript,react,fullstack --limit 15
-
-# Strictly exclude already matched or rejected jobs (ignore previously evaluated opportunities)
+# Canonical matching query: last 2 months, exclude jobs already matched/rejected
 node skills/jd-matcher-skill/scripts/search.ts --months 2 --tags typescript,react,fullstack --exclude-matched --limit 15
 
 # Or filter by keywords and role titles while excluding past evaluations
 node skills/jd-matcher-skill/scripts/search.ts --months 2 --keywords backend,golang,api --exclude-matched --limit 15
+
+# Only when the candidate explicitly wants a full re-scan (incl. previous matches):
+node skills/jd-matcher-skill/scripts/search.ts --months 2 --tags typescript,react,fullstack --include-matched --limit 15
 ```
 
-The script outputs a markdown summary table displaying candidate JDs, their `Status` (`🟢 New` vs `⚪ Matched` / `❌ Rejected`), and relative file paths.
+> **Matching rule**: for matching runs, always prefer `--exclude-matched` (or `--unmatched-only`). Jobs already recorded in any report (top-level or `archive/`) MUST NOT be evaluated again unless the candidate has updated their resume/expectations or explicitly asks to revisit them.
 
 ### Step 4: AI Agent Deep Evaluation & Scoring (Evaluate)
 
 Follow the evaluation rubric: [evaluation-rubric.md](./references/evaluation-rubric.md).
 
 1. **Prioritize Unmatched Opportunities (评估去重与优先原则)**:
+   - **Receive only fresh jobs**: The Step 3 query should already pass `--exclude-matched`, so every JD handed to evaluation is either fresh or explicitly requested.
    - **Focus on Fresh Opportunities**: Prioritize JDs labeled `🟢 New` that have not been evaluated before.
-   - **Ignore Already Evaluated Jobs**: For JDs already evaluated in past reports (`⚪ Matched` or `❌ Rejected`), **skip and ignore them** unless the candidate has explicitly updated their resume or relaxed their hard constraints. This prevents redundant token consumption and avoids re-recommending duplicate jobs to the user.
+   - **Ignore Already Evaluated Jobs**: For JDs already evaluated in past reports (`⚪ Matched` or `❌ Rejected`), **skip and ignore them** unless the candidate has explicitly updated their resume or relaxed their hard constraints. If such a job is filtered out by the search script, respect that and do not re-add it manually. This prevents redundant token consumption and avoids re-recommending duplicate jobs to the user.
 2. **Hard Constraints Gate (Strict Veto)**:
    - Check if each new JD violates any requirement in `data/profile/expectations.md` (e.g., US-only citizenship, non-remote requirement, insufficient salary floor). Immediately reject non-compliant jobs and record the rejection reason.
 3. **Deep Fit Scoring (0-10 Scale)**:
@@ -138,14 +143,17 @@ Follow the evaluation rubric: [evaluation-rubric.md](./references/evaluation-rub
 
 ### Step 5: Generate Report & Launch Visual Dashboard (Report & Dashboard)
 
-1. **Archive Match Report**:
+1. **Append Match Report (never overwrite history)**:
    Compile all recommendations scoring >= 6.0 into a structured report saved to `data/matches/YYYY-MM-DD-report.md`.
+   - **Never overwrite or delete an existing report.** If a report for today already exists, write the new one with an `-HHMM` suffix instead: `data/matches/YYYY-MM-DD-report-1615.md`.
+   - **Never move/rename reports out of the aggregation path** unless you place them under `data/matches/archive/` — the dashboard reads that folder too.
+   - Every report is cumulative history: prior recommendations are never rewritten, only appended to with a new dated file.
 2. **Generate Kami-Styled Visual Dashboard**:
    Run the dashboard builder script:
    ```bash
    node skills/jd-matcher-skill/scripts/dashboard.ts --open
    ```
-   This generates `data/matches/dashboard.html` (along with `data.json` and `data.js`) adhering to the **Kami (`紙`)** design system and opens it in the user's default browser (`xdg-open` on Linux, `open` on macOS).
+   This regenerates `data/matches/dashboard.html` (along with `data.json` and `data.js`) adhering to the **Kami (`紙`)** design system and opens it in the user's default browser (`xdg-open` on Linux, `open` on macOS). The bundle aggregates **all** reports recursively (top-level + `archive/`), deduplicates jobs across runs (newest evaluation wins) and keeps the per-report evaluation history.
 3. **Present Chat Summary**:
    Provide a concise executive summary in the active chat session:
    - **Role Title & Company**
@@ -165,6 +173,7 @@ Unless the user explicitly specifies another design framework or style, **all ge
 - **Ink-Blue & Deep Slate Accents**: Ink-blue accents (`#1E3A8A`, `#1B365D`) for primary elements and brand accents, balanced with charcoal slate text (`#1C1917`, `#44403C`).
 - **Craft Layout**: Generous whitespace, subtle borders (`#E2DFD7`), soft card elevations, and elegant metric pill tags.
 - **Interactive Capabilities**: Dynamic client-side search, multi-facet filtering (source, tags, match tiers), detail expansion drawer, and active tab switching between Matched Jobs, Hard Gate Rejections, and Crawled Knowledge Base.
+- **Cumulative History**: The Matched tab groups every recommended job under its **evaluation date section** (newest run first), so all history stays visible; each card shows its evaluation date and source report, and jobs re-evaluated in multiple runs carry a `↻ N× evaluated` badge. A dedicated **Evaluation History** tab lists every aggregated report with its matched/vetoed counts.
 
 ---
 
@@ -189,4 +198,6 @@ Unless the user explicitly specifies another design framework or style, **all ge
 
 ### `dashboard.ts`
 - `--open`: Automatically opens `data/matches/dashboard.html` in the user's default browser upon generation.
-- Dynamically scans `data/jds/**/*.md` and `data/matches/*.md` to build the complete data bundle (`data.json` and `data.js`).
+- Recursively scans `data/jds/**/*.md` and `data/matches/**/*.md` (including `archive/`) to build the complete data bundle (`data.json` and `data.js`).
+- Deduplicates matches across all reports by normalized URL (newest evaluation wins, full evaluation history preserved), deduplicates rejections by company + title, and emits a per-report timeline (`reports[]`) used by the Evaluation History tab.
+- Report evaluation dates are resolved from the filename `YYYY-MM-DD` first, then the report body, then file mtime.

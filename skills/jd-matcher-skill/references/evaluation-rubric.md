@@ -40,4 +40,12 @@ For each job recommended to the user, the AI Agent must provide detailed assessm
 
 ## 3. Reporting Standard
 
-All recommendations should be archived in `data/matches/YYYY-MM-DD-report.md`, and an executive summary presented to the user in the active chat session.
+Recommendation reports are **append-only cumulative history** — never destructive:
+
+1. Compile all recommendations scoring >= 6.0 into a new dated report at `data/matches/YYYY-MM-DD-report.md`.
+   - If a report for today already exists, use an `-HHMM` suffix (`YYYY-MM-DD-report-1615.md`) instead of overwriting.
+   - Never delete or rewrite a previously written report. Prior recommendations remain part of the record.
+   - If reports are tidied up, move them to `data/matches/archive/` (never outside it) — the dashboard aggregates that folder.
+2. Re-evaluating an already-evaluated job is prohibited unless the candidate updated their profile or explicitly asks. Matching runs must exclude jobs found in any existing report (top-level or `archive/`).
+3. The visual dashboard aggregates every report recursively, deduplicates jobs by URL with the newest evaluation winning, and groups matched jobs by evaluation date so the full history is always visible.
+4. Present an executive summary to the user in the active chat session.

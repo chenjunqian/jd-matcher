@@ -201,6 +201,16 @@ describe("Dashboard Generation", () => {
           url: "https://example.com/job",
           postedAt: "2026-10-09",
           evaluatedAt: "2026-10-10",
+          firstSeenAt: "2026-10-10",
+          timesEvaluated: 1,
+          history: [
+            {
+              date: "2026-10-10",
+              score: 9.2,
+              reportFile: "data/matches/2026-10-10-report.md",
+            },
+          ],
+          reportFile: "data/matches/2026-10-10-report.md",
           locations: ["Worldwide"],
           salary: "$120k",
           matchScore: 9.2,
@@ -208,7 +218,19 @@ describe("Dashboard Generation", () => {
           tips: "Highlight Next.js experience",
         },
       ],
-      [{ title: "Junior Dev", company: "Beta", reason: "US Only" }]
+      [
+        {
+          title: "Junior Dev",
+          company: "Beta",
+          reason: "US Only",
+          evaluatedAt: "2026-10-10",
+          firstSeenAt: "2026-10-10",
+          timesSeen: 1,
+          reportFile: "data/matches/2026-10-10-report.md",
+        },
+      ],
+      [],
+      [{ date: "2026-10-10", file: "data/matches/2026-10-10-report.md", matched: 1, rejected: 1 }]
     );
 
     expect(html).toContain("<!DOCTYPE html>");
@@ -217,6 +239,181 @@ describe("Dashboard Generation", () => {
     expect(html).toContain("9.2");
     expect(html).toContain("Hard Constraint Exclusions");
     expect(html).toContain("US Only");
+    // Cumulative history UI
+    expect(html).toContain("date-section");
+    expect(html).toContain("Evaluation History");
+    expect(html).toContain("2026-10-10");
+  });
+});
+
+describe("Cumulative Match History", () => {
+  const TEST_MATCHES_DIR = path.resolve(process.cwd(), "data/test_history_matches");
+
+  const buildReport = (date: string, score: number, note: string) => `# Remote Job Match Report
+- **Evaluation Date (评估时间)**: ${date}
+
+## 🎯 Top Matches (重点推荐岗位)
+
+### 1. [Software Engineer](https://weworkremotely.com/remote-jobs/acme-software-engineer)
+- **Company**: Acme
+- **Source**: WeWorkRemotely (\`wwr-acme\`)
+- **Posted**: 2026-10-01
+- **Locations**: Worldwide
+- **Salary**: $150,000
+- **Match Score**: **${score} / 10**
+- **Why Match**:
+  - ${note} alignment.
+- **Application Tips**:
+  - Highlight TypeScript.
+
+## ⛔ Hard Gate Rejections (排除与拒否)
+
+| 职位 | 公司 / 来源 | 拒否原因 |
+| :--- | :--- | :--- |
+| Junior Dev | Beta | ❌ US Only |
+`;
+
+  beforeEach(() => {
+    if (fs.existsSync(TEST_MATCHES_DIR)) {
+      fs.rmSync(TEST_MATCHES_DIR, { recursive: true, force: true });
+    }
+    fs.mkdirSync(path.join(TEST_MATCHES_DIR, "archive"), { recursive: true });
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(TEST_MATCHES_DIR)) {
+      fs.rmSync(TEST_MATCHES_DIR, { recursive: true, force: true });
+    }
+  });
+
+  it("recursively collects reports incl. archive/ and same-day suffixed files", async () => {
+    const { collectReportFiles, parseAllReports } = await import("./dashboard.ts");
+
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "2026-10-15-report.md"),
+      buildReport("2026-10-15", 9.5, "new"),
+      "utf-8"
+    );
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "2026-10-15-report-1615.md"),
+      buildReport("2026-10-15", 9.4, "second same-day"),
+      "utf-8"
+    );
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "archive", "2026-10-10-report.md"),
+      buildReport("2026-10-10", 8.0, "old"),
+      "utf-8"
+    );
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "archive", "sample-report.example.md"),
+      buildReport("2000-01-01", 1.0, "example"),
+      "utf-8"
+    );
+
+    expect(collectReportFiles(TEST_MATCHES_DIR).length).toBe(3);
+
+    const { reports } = parseAllReports(TEST_MATCHES_DIR);
+    expect(reports.length).toBe(3);
+    expect(reports.every((r) => r.date !== "2000-01-01")).toBe(true);
+    expect(reports.filter((r) => r.date === "2026-10-15").length).toBe(2);
+  });
+
+  it("keeps the newest evaluation per job and preserves per-report history", async () => {
+    const { parseAllReports } = await import("./dashboard.ts");
+
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "archive", "2026-10-10-report.md"),
+      buildReport("2026-10-10", 8.0, "old"),
+      "utf-8"
+    );
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "2026-10-15-report.md"),
+      buildReport("2026-10-15", 9.5, "new"),
+      "utf-8"
+    );
+
+    const { matches } = parseAllReports(TEST_MATCHES_DIR);
+    expect(matches.length).toBe(1);
+
+    const job = matches[0];
+    expect(job.matchScore).toBe(9.5);
+    expect(job.whyMatch).toContain("new alignment");
+    expect(job.evaluatedAt).toBe("2026-10-15");
+    expect(job.firstSeenAt).toBe("2026-10-10");
+    expect(job.timesEvaluated).toBe(2);
+    expect(job.history.length).toBe(2);
+    expect(job.history[0].date).toBe("2026-10-15");
+    expect(job.reportFile.endsWith("2026-10-15-report.md")).toBe(true);
+    // Stable id across runs
+    expect(job.id).toMatch(/^job-[a-z0-9]+$/);
+  });
+
+  it("merges the same job cross-posted under different URLs", async () => {
+    const { parseAllReports } = await import("./dashboard.ts");
+
+    const mk = (date: string, url: string, score: number) => `# Report
+- **Evaluation Date (评估时间)**: ${date}
+
+## 🎯 Top Matches
+
+### 1. [Software Engineer](${url})
+- **Company**: Acme
+- **Source**: RemoteOK
+- **Posted**: 2026-10-01
+- **Locations**: Worldwide
+- **Salary**: $150,000
+- **Match Score**: **${score} / 10**
+- **Why Match**:
+  - fit.
+- **Application Tips**:
+  - tips.
+`;
+
+    // Same company + title, but different URLs (aggregator mirror vs. own careers page)
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "archive", "2026-10-10-report.md"),
+      mk("2026-10-10", "https://remoteok.com/remote-jobs/remote-acme-1", 8.5),
+      "utf-8"
+    );
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "2026-10-15-report.md"),
+      mk("2026-10-15", "https://www.acme.com/careers/software-engineer", 9.1),
+      "utf-8"
+    );
+
+    const { matches } = parseAllReports(TEST_MATCHES_DIR);
+    expect(matches.length).toBe(1);
+    expect(matches[0].url).toBe("https://www.acme.com/careers/software-engineer");
+    expect(matches[0].matchScore).toBe(9.1);
+    expect(matches[0].timesEvaluated).toBe(2);
+    expect(matches[0].evaluatedAt).toBe("2026-10-15");
+    expect(matches[0].firstSeenAt).toBe("2026-10-10");
+  });
+
+  it("lets the newest evaluation decide matched vs rejected", async () => {
+    const { parseAllReports } = await import("./dashboard.ts");
+
+    // Matched on 10-10, then vetoed as US-only on 10-15
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "archive", "2026-10-10-report.md"),
+      buildReport("2026-10-10", 9.0, "old"),
+      "utf-8"
+    );
+    fs.writeFileSync(
+      path.join(TEST_MATCHES_DIR, "2026-10-15-report.md"),
+      `# Report\n- **Evaluation Date (评估时间)**: 2026-10-15\n\n## ⛔ Hard Gate Rejections\n\n| 职位 | 公司 / 来源 | 拒否原因 |\n| :--- | :--- | :--- |\n| Software Engineer | Acme | ❌ US Only |\n`,
+      "utf-8"
+    );
+
+    const { matches, rejections } = parseAllReports(TEST_MATCHES_DIR);
+    expect(matches.some((m) => m.company === "Acme")).toBe(false);
+    expect(rejections.some((r) => r.company === "Acme" && r.reason.includes("US Only"))).toBe(true);
+  });
+
+  it("formats the bundle timestamp in local time", async () => {
+    const { formatLocalDate } = await import("./dashboard.ts");
+    const d = new Date(2026, 9, 5, 0, 30); // local Oct 5 00:30
+    expect(formatLocalDate(d)).toBe("2026-10-05");
   });
 });
 
