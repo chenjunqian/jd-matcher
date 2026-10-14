@@ -17,8 +17,17 @@ export interface JobMarkdownDocument {
   markdownContent: string;
 }
 
+export type CrawlSource =
+  | "all"
+  | "remoteok"
+  | "weworkremotely"
+  | "remotive"
+  | "jobspresso"
+  | "workingnomads"
+  | "nodesk";
+
 export interface CrawlOptions {
-  sources?: Array<"remoteok" | "weworkremotely">;
+  sources?: Array<CrawlSource>;
   limit?: number;
   outDir?: string;
 }

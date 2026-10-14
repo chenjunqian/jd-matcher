@@ -2,19 +2,31 @@ import { XMLParser } from "fast-xml-parser";
 import * as cheerio from "cheerio";
 import type { CommonJob } from "../types.js";
 
-const RSS_URLS = [
+export const RSS_URLS = [
   "https://weworkremotely.com/categories/remote-programming-jobs.rss",
-  "https://weworkremotely.com/categories/remote-full-stack-programming-jobs.rss",
+  "https://weworkremotely.com/categories/remote-design-jobs.rss",
+  "https://weworkremotely.com/categories/remote-customer-support-jobs.rss",
   "https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss",
+  "https://weworkremotely.com/categories/remote-management-and-finance-jobs.rss",
+  "https://weworkremotely.com/categories/remote-product-jobs.rss",
+  "https://weworkremotely.com/categories/remote-sales-and-marketing-jobs.rss",
 ];
 
-export async function getAllFullStackJobs(): Promise<CommonJob[]> {
+export async function getAllWwrJobs(): Promise<CommonJob[]> {
   const all: CommonJob[] = [];
   const errors: Error[] = [];
+  const seenUrls = new Set<string>();
+
   for (const url of RSS_URLS) {
     try {
       const resp = await fetch(url);
-      all.push(...parseWeworkremotelyRSSResp(await resp.text()));
+      const jobs = parseWeworkremotelyRSSResp(await resp.text());
+      for (const job of jobs) {
+        if (!seenUrls.has(job.url)) {
+          seenUrls.add(job.url);
+          all.push(job);
+        }
+      }
     } catch (e) {
       errors.push(e instanceof Error ? e : new Error(String(e)));
     }
@@ -22,6 +34,8 @@ export async function getAllFullStackJobs(): Promise<CommonJob[]> {
   if (errors.length && all.length === 0) throw new AggregateError(errors, "all RSS feeds failed");
   return all;
 }
+
+export const getAllFullStackJobs = getAllWwrJobs;
 
 export function parseWeworkremotelyRSSResp(xml: string): CommonJob[] {
   const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_" });

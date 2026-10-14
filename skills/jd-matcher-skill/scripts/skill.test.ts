@@ -10,6 +10,13 @@ import {
   saveJobDocument,
 } from "./utils.ts";
 import { searchJDs, getTargetMonthDirs } from "./search.ts";
+import {
+  WWR_RSS_URLS,
+  crawlRemotive,
+  crawlJobspresso,
+  crawlWorkingNomads,
+  crawlNoDesk,
+} from "./crawl.ts";
 import type { JobMarkdownDocument } from "./types.ts";
 
 const TEST_DIR = path.resolve(process.cwd(), "data/test_jds");
@@ -341,6 +348,24 @@ describe("Evaluated Job Exclusion & Prioritization", () => {
     expect(prioritizedResults[0].isEvaluated).toBe(false);
     expect(prioritizedResults[1].id).toBe("eval-001");
     expect(prioritizedResults[1].isEvaluated).toBe(true);
+  });
+});
+
+describe("Skill Crawlers", () => {
+  it("includes all job categories in WeWorkRemotely feeds", () => {
+    expect(WWR_RSS_URLS.length).toBeGreaterThanOrEqual(7);
+    expect(WWR_RSS_URLS).toContain("https://weworkremotely.com/categories/remote-customer-support-jobs.rss");
+    expect(WWR_RSS_URLS).toContain("https://weworkremotely.com/categories/remote-design-jobs.rss");
+    expect(WWR_RSS_URLS).toContain("https://weworkremotely.com/categories/remote-sales-and-marketing-jobs.rss");
+    expect(WWR_RSS_URLS).toContain("https://weworkremotely.com/categories/remote-management-and-finance-jobs.rss");
+    expect(WWR_RSS_URLS).toContain("https://weworkremotely.com/categories/remote-product-jobs.rss");
+  });
+
+  it("exports all 4 new crawler functions", () => {
+    expect(typeof crawlRemotive).toBe("function");
+    expect(typeof crawlJobspresso).toBe("function");
+    expect(typeof crawlWorkingNomads).toBe("function");
+    expect(typeof crawlNoDesk).toBe("function");
   });
 });
 

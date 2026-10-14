@@ -40,7 +40,11 @@
 │   │   ├── crawler/
 │   │   │   ├── index.ts       # Crawler registry
 │   │   │   ├── remote_ok.ts   # RemoteOK scraper
-│   │   │   └── weworkremotely.ts # WeWorkRemotely scraper
+│   │   │   ├── weworkremotely.ts # WeWorkRemotely scraper (all categories)
+│   │   │   ├── remotive.ts    # Remotive API scraper (all categories)
+│   │   │   ├── jobspresso.ts  # Jobspresso RSS scraper (all categories)
+│   │   │   ├── workingnomads.ts # Working Nomads API scraper (all categories)
+│   │   │   └── nodesk.ts      # NoDesk RSS scraper (all categories)
 │   │   ├── email/
 │   │   │   └── template.ts    # Email HTML/text templates
 │   │   └── vectorize/
@@ -55,7 +59,7 @@
 │   │   ├── constants.ts       # All Telegram reply texts
 │   │   └── handlers/          # start, help, all_jobs, jobs, upload_resume, expectation
 │   └── jobs/
-│       ├── crawl.ts           # Fetch jobs from RemoteOK + WeWorkRemotely
+│       ├── crawl.ts           # Fetch jobs from RemoteOK, WWR, Remotive, Jobspresso, Working Nomads, NoDesk
 │       ├── embed.ts           # Generate embeddings → store in Vectorize
 │       ├── match.ts           # Vector search → AI agent (Vercel AI SDK) → store matches
 │       ├── match.test.ts

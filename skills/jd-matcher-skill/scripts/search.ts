@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { SearchOptions, SearchResultItem } from "./types.ts";
 import { parseFrontmatter, buildEvaluatedJobIndex, checkJobEvaluated } from "./utils.ts";
 
@@ -253,6 +254,11 @@ function run() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isMain =
+  Boolean(process.argv[1]) &&
+  (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) ||
+    process.argv[1].endsWith("search.ts"));
+
+if (isMain) {
   run();
 }

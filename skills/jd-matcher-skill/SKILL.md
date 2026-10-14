@@ -88,15 +88,18 @@ Before running any searches or evaluations, the AI Agent **must verify candidate
 
 ### Step 2: Crawl & Ingest Latest Jobs (Crawl & Ingest)
 
-Run the crawler script to fetch the latest remote opportunities from RemoteOK and WeWorkRemotely, automatically saving them as date-partitioned Markdown files under `data/jds/<YYYY>/<MM>/`:
+Run the crawler script to fetch all types of remote opportunities (Software Development, Customer Support, Design, Marketing, Sales, Product, Operations, Finance, etc.) across 6 top remote platforms (**RemoteOK**, **WeWorkRemotely**, **Remotive**, **Jobspresso**, **Working Nomads**, and **NoDesk**), automatically saving them as date-partitioned Markdown files under `data/jds/<YYYY>/<MM>/`:
 
 ```bash
-# Crawl latest 30 jobs across all sources (automatic deduplication)
+# Crawl latest 30 jobs across all 6 sources (automatic deduplication)
 node skills/jd-matcher-skill/scripts/crawl.ts --limit 30
 
-# Or target a specific source
-node skills/jd-matcher-skill/scripts/crawl.ts --source remoteok --limit 20
-node skills/jd-matcher-skill/scripts/crawl.ts --source weworkremotely --limit 20
+# Or target a specific source:
+# remoteok | weworkremotely | remotive | jobspresso | workingnomads | nodesk
+node skills/jd-matcher-skill/scripts/crawl.ts --source remotive --limit 30
+node skills/jd-matcher-skill/scripts/crawl.ts --source jobspresso --limit 20
+node skills/jd-matcher-skill/scripts/crawl.ts --source workingnomads --limit 30
+node skills/jd-matcher-skill/scripts/crawl.ts --source nodesk --limit 20
 ```
 
 ### Step 3: Two-Stage Fast Retrieval & Filtering (Retrieve & Filter)
@@ -169,7 +172,7 @@ Unless the user explicitly specifies another design framework or style, **all ge
 
 ### `crawl.ts`
 - `--limit <number>`: Maximum number of jobs to fetch per source (default: 40).
-- `--source <all|remoteok|weworkremotely>`: Data source to crawl (default: all).
+- `--source <all|remoteok|weworkremotely|remotive|jobspresso|workingnomads|nodesk>`: Data source to crawl (default: all).
 - `--out <dir>`: Target knowledge base output directory (default: `data/jds`).
 
 ### `search.ts`

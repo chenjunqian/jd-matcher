@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import { exec } from "node:child_process";
 import { parseFrontmatter } from "./utils.ts";
 
@@ -1393,7 +1394,12 @@ export function runDashboard(
 }
 
 // CLI entry point
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isMain =
+  Boolean(process.argv[1]) &&
+  (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) ||
+    process.argv[1].endsWith("dashboard.ts"));
+
+if (isMain) {
   const args = process.argv.slice(2);
   const shouldOpen = args.includes("--open");
   runDashboard(DEFAULT_MATCHES_DIR, DEFAULT_JDS_DIR, shouldOpen);

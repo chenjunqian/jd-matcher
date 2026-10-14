@@ -23,7 +23,13 @@ function makeJob(overrides: Partial<UserMatchedDetailJob> = {}): UserMatchedDeta
 function makeEnv(): Env {
   return {
     TELEGRAM_BOT_TOKEN: "test-bot-token",
-    DB: {} as D1Database,
+    DB: {
+      prepare: vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          run: vi.fn().mockResolvedValue({}),
+        }),
+      }),
+    } as unknown as D1Database,
     SESSION_KV: {} as KVNamespace,
     JOB_DESC_EMBEDDINGS: {} as VectorizeIndex,
     RESUME_EMBEDDINGS: {} as VectorizeIndex,
