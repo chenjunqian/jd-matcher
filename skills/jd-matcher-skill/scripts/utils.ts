@@ -211,6 +211,102 @@ export function normalizeKey(text?: string): string {
 }
 
 /**
+ * Common legal-entity suffixes that carry no identifying signal.
+ * Stripping them lets "Proxify AB" match "Proxify" and prevents the same
+ * employer from being re-surfaced as an unevaluated job.
+ */
+const LEGAL_ENTITY_SUFFIXES = new Set([
+  "inc",
+  "incorporated",
+  "llc",
+  "llp",
+  "ltd",
+  "limited",
+  "corp",
+  "corporation",
+  "co",
+  "gmbh",
+  "ag",
+  "bv",
+  "nv",
+  "sa",
+  "sas",
+  "sarl",
+  "srl",
+  "spa",
+  "plc",
+  "pte",
+  "pvt",
+  "oy",
+  "ab",
+  "as",
+  "aps",
+  "kft",
+  "doo",
+  "dba",
+  "sdn",
+  "bhd",
+]);
+
+/**
+ * Normalize a company name for comparison: lowercases, strips punctuation and
+ * trailing legal-entity suffixes (e.g. "Proxify AB" -> "proxify").
+ */
+export function normalizeCompanyKey(text?: string): string {
+  // Drop parenthetical annotations that reports sometimes add to the company
+  // cell (e.g. "Lemon.io (Working Nomads)" -> "lemon io").
+  const withoutNotes = (text ?? "").replace(/\([^)]*\)/g, " ");
+  const key = normalizeKey(withoutNotes);
+  if (!key) return "";
+  const tokens = key.split(" ");
+  while (tokens.length > 1 && LEGAL_ENTITY_SUFFIXES.has(tokens[tokens.length - 1])) {
+    tokens.pop();
+  }
+  return tokens.join(" ");
+}
+
+/**
+ * Split a report cell that bundles several values, e.g.
+ * `Senior Vue Developer / Senior back-end Engineer` or `Calm.com / Seat Geek`.
+ *
+ * Separators are only honoured at the top level (outside parentheses), so
+ * `Senior Fullstack Developer (React.js / Node.js)` stays a single value.
+ * A bare ` + ` is deliberately NOT a separator: it is common inside real job
+ * titles (`Frontend + Backend Engineer`), and splitting it would invent
+ * over-broad records that could pre-exclude unrelated future jobs.
+ */
+export function splitMultiValue(text?: string): string[] {
+  const value = (text ?? "").trim();
+  if (!value) return [];
+
+  const SEPARATORS = [/^\s+\/\s+/, /^\s*·\s*/, /^\s*、\s*/];
+  const parts: string[] = [];
+  let depth = 0;
+  let current = "";
+
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i];
+    if (ch === "(" || ch === "[") depth++;else if (ch === ")" || ch === "]") depth = Math.max(0, depth - 1);
+
+    if (depth === 0) {
+      const rest = value.slice(i);
+      const sep = SEPARATORS.map((re) => rest.match(re)).find(Boolean);
+      if (sep && current.trim()) {
+        parts.push(current.trim());
+        current = "";
+        i += sep[0].length - 1;
+        continue;
+      }
+    }
+    current += ch;
+  }
+
+  parts.push(current.trim());
+  const cleaned = parts.filter(Boolean);
+  return cleaned.length > 0 ? cleaned : [value];
+}
+
+/**
  * Scan all markdown reports in data/matches (including subdirectories like archive)
  * to build a fast lookup index of all jobs that have been evaluated (matched or rejected).
  */
@@ -258,7 +354,7 @@ export function buildEvaluatedJobIndex(matchesDir: string): EvaluatedJobIndex {
       const m = base.match(/^((?:rok-\d+|wwr-[a-z0-9_-]+))/i);
       if (m) index.ids.add(m[1].toLowerCase());
     }
-    const cKey = normalizeKey(record.company);
+    const cKey = normalizeCompanyKey(record.company);
     const tKey = normalizeKey(record.title);
     if (cKey && tKey) {
       index.companyTitleKeys.add(`${cKey}:::${tKey}`);
@@ -335,13 +431,30 @@ export function buildEvaluatedJobIndex(matchesDir: string): EvaluatedJobIndex {
           }
           const company = parts[1].replace(/[*_]/g, "").trim();
 
-          registerRecord({
-            url,
-            title,
-            company,
-            status: "rejected",
-            reportFile: reportFileName,
-          });
+          // Reports often bundle several jobs into one row
+          // (e.g. "Senior Vue Developer / Senior back-end Engineer"). Register every
+          // top-level variant so each underlying job is properly marked evaluated.
+          // When both cells carry the same number of variants they are zipped
+          // (positional), otherwise each title is paired with the full company
+          // cell — this avoids inventing bogus company + title combinations.
+          const titleVariants = splitMultiValue(title);
+          const companyVariants = splitMultiValue(company);
+          const combos =
+            titleVariants.length === companyVariants.length && titleVariants.length > 1
+              ? titleVariants.map((t, idx) => ({ title: t, company: companyVariants[idx] }))
+              : titleVariants.length > 1
+                ? titleVariants.map((t) => ({ title: t, company }))
+                : companyVariants.map((c) => ({ title, company: c }));
+
+          for (const combo of combos) {
+            registerRecord({
+              url,
+              title: combo.title,
+              company: combo.company,
+              status: "rejected",
+              reportFile: reportFileName,
+            });
+          }
         }
       }
     }
@@ -416,13 +529,13 @@ export function checkJobEvaluated(
   }
 
   // 4. Match by normalized Company + Title combination
-  const cKey = normalizeKey(job.company);
+  const cKey = normalizeCompanyKey(job.company);
   const tKey = normalizeKey(job.title);
   if (cKey && tKey) {
     const compositeKey = `${cKey}:::${tKey}`;
     if (index.companyTitleKeys.has(compositeKey)) {
       const rec = index.records.find(
-        (r) => `${normalizeKey(r.company)}:::${normalizeKey(r.title)}` === compositeKey
+        (r) => `${normalizeCompanyKey(r.company)}:::${normalizeKey(r.title)}` === compositeKey
       );
       return { evaluated: true, status: rec?.status || "matched", reportFile: rec?.reportFile };
     }

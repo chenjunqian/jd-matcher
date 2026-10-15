@@ -5,6 +5,7 @@ import * as cheerio from "cheerio";
 import { XMLParser } from "fast-xml-parser";
 import type { JobMarkdownDocument } from "./types.ts";
 import { cleanHtmlToMarkdown, saveJobDocument, slugify } from "./utils.ts";
+import { detectAgencyPlatform, type AgencyMatch } from "./agency_blocklist.ts";
 
 const DEFAULT_DATA_DIR = path.resolve(process.cwd(), "data/jds");
 
@@ -551,6 +552,43 @@ export async function crawlNoDesk(limit = 50): Promise<JobMarkdownDocument[]> {
 }
 
 /**
+ * Partition crawled documents into direct-employer jobs and talent-agency /
+ * freelance-marketplace postings (Proxify, Lemon.io, Toptal, …).
+ *
+ * Agency postings are dropped before they reach the knowledge base so they are
+ * never evaluated or recommended. Exempt specific platforms with `allow`.
+ */
+export function splitAgencyJobs(
+  docs: JobMarkdownDocument[],
+  options: { allowedAgencies?: string[]; filterAgencies?: boolean; inspectContent?: boolean } = {}
+): { jobs: JobMarkdownDocument[]; filtered: Array<{ doc: JobMarkdownDocument; match: AgencyMatch }> } {
+  const { filterAgencies = true, allowedAgencies = [], inspectContent = true } = options;
+  if (!filterAgencies) return { jobs: docs, filtered: [] };
+
+  const jobs: JobMarkdownDocument[] = [];
+  const filtered: Array<{ doc: JobMarkdownDocument; match: AgencyMatch }> = [];
+
+  for (const doc of docs) {
+    const match = detectAgencyPlatform(
+      {
+        company: doc.metadata.company,
+        title: doc.metadata.title,
+        url: doc.metadata.url,
+        content: doc.markdownContent,
+      },
+      { allow: allowedAgencies, inspectContent }
+    );
+    if (match) {
+      filtered.push({ doc, match });
+    } else {
+      jobs.push(doc);
+    }
+  }
+
+  return { jobs, filtered };
+}
+
+/**
  * Main runner
  */
 async function run() {
@@ -558,6 +596,8 @@ async function run() {
   let limit = 40;
   let source = "all";
   let outDir = DEFAULT_DATA_DIR;
+  let filterAgencies = true;
+  let allowedAgencies: string[] = [];
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--limit" && args[i + 1]) {
@@ -569,12 +609,24 @@ async function run() {
     } else if (args[i] === "--out" && args[i + 1]) {
       outDir = path.resolve(process.cwd(), args[i + 1]);
       i++;
+    } else if (args[i] === "--include-agencies" || args[i] === "--no-agency-filter") {
+      filterAgencies = false;
+    } else if (args[i] === "--allow-agency" && args[i + 1]) {
+      allowedAgencies = args[i + 1]
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      i++;
     }
   }
 
   console.log(`[CRAWL] Starting job crawler...`);
   console.log(`[CRAWL] Target output: ${outDir}`);
-  console.log(`[CRAWL] Mode: source=${source}, limit=${limit}`);
+  console.log(
+    `[CRAWL] Mode: source=${source}, limit=${limit}, agencyFilter=${filterAgencies ? "on" : "off"}${
+      allowedAgencies.length ? `, allow=${allowedAgencies.join("|")}` : ""
+    }`
+  );
 
   const allDocs: JobMarkdownDocument[] = [];
 
@@ -620,10 +672,18 @@ async function run() {
     allDocs.push(...docs);
   }
 
+  const { jobs, filtered } = splitAgencyJobs(allDocs, { filterAgencies, allowedAgencies });
+
+  for (const { doc, match } of filtered) {
+    console.log(
+      `[CRAWL] 🚫 Skipped agency posting: ${doc.metadata.company} — ${doc.metadata.title} [${match.platform.name}] (${match.reason})`
+    );
+  }
+
   let savedCount = 0;
   let skippedCount = 0;
 
-  for (const doc of allDocs) {
+  for (const doc of jobs) {
     const res = saveJobDocument(doc, outDir);
     if (res.saved) {
       savedCount++;
@@ -632,12 +692,14 @@ async function run() {
     }
   }
 
-  console.log("==========================================");
+  console.log("===========================================");
   console.log(`[CRAWL SUMMARY] Ingestion Complete!`);
   console.log(`- Total jobs fetched:  ${allDocs.length}`);
+  console.log(`- Filtered (agency):   ${filtered.length}`);
+  console.log(`- Eligible jobs:       ${jobs.length}`);
   console.log(`- Newly saved to KB:   ${savedCount}`);
   console.log(`- Skipped (duplicate): ${skippedCount}`);
-  console.log("==========================================");
+  console.log("===========================================");
 }
 
 // Direct execution

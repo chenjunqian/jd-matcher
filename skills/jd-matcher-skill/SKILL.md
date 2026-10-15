@@ -96,6 +96,8 @@ Run the crawler script to fetch all types of remote opportunities (Software Deve
 
 ```bash
 # Crawl latest 30 jobs across all 6 sources (automatic deduplication)
+# Talent-agency / freelance-marketplace postings (Proxify, Lemon.io, Toptal, …)
+# are filtered out automatically — see "Agency & Marketplace Filtering" below.
 node skills/jd-matcher-skill/scripts/crawl.ts --limit 30
 
 # Or target a specific source:
@@ -123,6 +125,8 @@ node skills/jd-matcher-skill/scripts/search.ts --months 2 --tags typescript,reac
 ```
 
 > **Matching rule**: for matching runs, always prefer `--exclude-matched` (or `--unmatched-only`). Jobs already recorded in any report (top-level or `archive/`) MUST NOT be evaluated again unless the candidate has updated their resume/expectations or explicitly asks to revisit them.
+
+> **Agency rule**: talent-agency / freelance-marketplace postings are dropped automatically (see [Agency & Marketplace Filtering](#agency--marketplace-filtering)). They are never evaluated or re-recommended, so the retirement of these platforms from the candidate's search never needs manual bookkeeping.
 
 ### Step 4: AI Agent Deep Evaluation & Scoring (Evaluate)
 
@@ -164,6 +168,57 @@ Follow the evaluation rubric: [evaluation-rubric.md](./references/evaluation-rub
 
 ---
 
+## Agency & Marketplace Filtering
+
+**Talent-agency and freelance-marketplace platforms are not employers.** They pool engineers into a talent network and place them on client projects (hourly / contract / project based), and their region rules commonly exclude the candidate (CET ± 3h, North America only, or a country allow-list that omits China Mainland). Evaluating them wastes tokens and produces repeat vetoes.
+
+The skill therefore ships a curated blocklist in `scripts/agency_blocklist.ts` and filters these postings **at both ends**:
+
+| Stage | Behaviour |
+|---|---|
+| `crawl.ts` | Agency postings are never written into `data/jds/**` (logged as `🚫 Skipped agency posting` and counted as `Filtered (agency)` in the summary). |
+| `search.ts` | Existing agency JDs already in the KB are skipped before evaluation and reported as `🚫 N agency-marketplace job(s) filtered` plus a per-platform appendix. |
+
+**Platforms blocked by default:**
+
+| Key | Platform | Key | Platform |
+|---|---|---|---|
+| `proxify` | Proxify | `braintrust` | Braintrust |
+| `lemon-io` | Lemon.io | `arc-dev` | Arc.dev |
+| `toptal` | Toptal | `crossover` | Crossover |
+| `a-team` | A.Team | `upwork` | Upwork |
+| `x-team` | X-Team | `freelancer` | Freelancer.com |
+| `andela` | Andela | `gigster` | Gigster |
+| `turing` | Turing | `topcoder` | Topcoder |
+| `gun-io` | Gun.io | `scalable-path` | Scalable Path |
+| — | — | `deazy` | Deazy (agency marketplace, matched via post body) |
+
+**How a job is matched** (conservative, to avoid filtering real employers):
+
+1. **Company name** — normalized exact match, ignoring punctuation and legal suffixes (`Proxify AB` → `proxify`, `Lemon.io` → `lemon io`).
+2. **Owned host** — e.g. `toptal.com`, `lemon.io`, `a.team` (subdomains included).
+3. **Aggregator URL slug** — e.g. `weworkremotely.com/remote-jobs/toptal-…` or `remoteok.com/…-lemon-io-1137475`.
+4. **Body marker** — unambiguous phrases used only by platform-managed postings (e.g. `deazy`), so agency subcontracts reposted under a different company name (e.g. `Somnio Software` via Deazy) are still caught.
+
+**Extending the list:** append an entry to `AGENCY_PLATFORMS` in `scripts/agency_blocklist.ts` with `companyNames` / `hosts` / `urlSlugs` / `contentMarkers`.
+
+**Overrides:**
+
+```bash
+# Re-include all agency platforms (e.g. to audit the raw feed)
+node skills/jd-matcher-skill/scripts/search.ts --months 2 --include-agencies --limit 30
+node skills/jd-matcher-skill/scripts/crawl.ts --include-agencies --limit 40
+
+# Exempt one platform (keys from the table above)
+node skills/jd-matcher-skill/scripts/search.ts --months 2 --allow-agency proxify --limit 30
+node skills/jd-matcher-skill/scripts/crawl.ts --allow-agency turing,upwork --limit 40
+
+# Skip the (slower) post-body scan, matching on company/host/slug only
+node skills/jd-matcher-skill/scripts/search.ts --months 2 --no-agency-content-scan
+```
+
+---
+
 ## Visual Dashboard & Kami (`紙`) Design System
 
 Unless the user explicitly specifies another design framework or style, **all generated visual dashboard pages MUST default to the Kami (`紙`) aesthetic**:
@@ -183,6 +238,8 @@ Unless the user explicitly specifies another design framework or style, **all ge
 - `--limit <number>`: Maximum number of jobs to fetch per source (default: 40).
 - `--source <all|remoteok|weworkremotely|remotive|jobspresso|workingnomads|nodesk>`: Data source to crawl (default: all).
 - `--out <dir>`: Target knowledge base output directory (default: `data/jds`).
+- `--include-agencies` / `--no-agency-filter`: Disable talent-agency / marketplace filtering (default: filtering ON).
+- `--allow-agency <key1,key2>`: Exempt specific agency platforms from filtering (e.g. `proxify,toptal`).
 
 ### `search.ts`
 - `--months <number>`: Number of recent months to inspect (default: 2).
@@ -195,6 +252,9 @@ Unless the user explicitly specifies another design framework or style, **all ge
 - `--include-matched`: Do not prioritize unmatched jobs, sort purely by post date.
 - `--matches-dir <dir>`: Custom path to match reports directory (default: `data/matches`).
 - `--format <markdown|json>`: Output format (default: `markdown`).
+- `--include-agencies` / `--no-agency-filter`: Disable talent-agency / marketplace filtering (default: filtering ON).
+- `--allow-agency <key1,key2>`: Exempt specific agency platforms from filtering (e.g. `proxify,toptal`).
+- `--no-agency-content-scan`: Match agencies on company / host / URL slug only (skip the body-marker scan).
 
 ### `dashboard.ts`
 - `--open`: Automatically opens `data/matches/dashboard.html` in the user's default browser upon generation.

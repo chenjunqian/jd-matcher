@@ -8,6 +8,7 @@ import {
   serializeMarkdownDocument,
   parseFrontmatter,
   saveJobDocument,
+  normalizeCompanyKey,
 } from "./utils.ts";
 import { searchJDs, getTargetMonthDirs } from "./search.ts";
 import {
@@ -16,7 +17,9 @@ import {
   crawlJobspresso,
   crawlWorkingNomads,
   crawlNoDesk,
+  splitAgencyJobs,
 } from "./crawl.ts";
+import { detectAgencyPlatform } from "./agency_blocklist.ts";
 import type { JobMarkdownDocument } from "./types.ts";
 
 const TEST_DIR = path.resolve(process.cwd(), "data/test_jds");
@@ -563,6 +566,234 @@ describe("Skill Crawlers", () => {
     expect(typeof crawlJobspresso).toBe("function");
     expect(typeof crawlWorkingNomads).toBe("function");
     expect(typeof crawlNoDesk).toBe("function");
+  });
+});
+
+describe("Agency / Freelance-Marketplace Filtering", () => {
+  const AGENCY_JDS_DIR = path.resolve(process.cwd(), "data/test_agency_jds");
+  const AGENCY_MATCHES_DIR = path.resolve(process.cwd(), "data/test_agency_matches");
+
+  beforeEach(() => {
+    if (fs.existsSync(AGENCY_JDS_DIR)) fs.rmSync(AGENCY_JDS_DIR, { recursive: true, force: true });
+    if (fs.existsSync(AGENCY_MATCHES_DIR)) fs.rmSync(AGENCY_MATCHES_DIR, { recursive: true, force: true });
+    fs.mkdirSync(AGENCY_JDS_DIR, { recursive: true });
+    fs.mkdirSync(AGENCY_MATCHES_DIR, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(AGENCY_JDS_DIR)) fs.rmSync(AGENCY_JDS_DIR, { recursive: true, force: true });
+    if (fs.existsSync(AGENCY_MATCHES_DIR)) fs.rmSync(AGENCY_MATCHES_DIR, { recursive: true, force: true });
+  });
+
+  it("normalizes legal-entity suffixes out of company names", () => {
+    expect(normalizeCompanyKey("Proxify AB")).toBe("proxify");
+    expect(normalizeCompanyKey("Acme, Inc.")).toBe("acme");
+    expect(normalizeCompanyKey("Globex GmbH")).toBe("globex");
+    expect(normalizeCompanyKey("Sticker Mule")).toBe("sticker mule");
+    expect(normalizeCompanyKey("Lemon.io (Working Nomads)")).toBe("lemon io");
+    expect(normalizeCompanyKey("Toptal (WeWorkRemotely)")).toBe("toptal");
+    expect(normalizeCompanyKey("Inc")).toBe("inc");
+    expect(normalizeCompanyKey("")).toBe("");
+  });
+
+  it("detects agency platforms by company, host, URL slug and body markers", () => {
+    expect(detectAgencyPlatform({ company: "Proxify AB" })?.platform.key).toBe("proxify");
+    expect(detectAgencyPlatform({ company: "Lemon.io" })?.platform.key).toBe("lemon-io");
+    expect(detectAgencyPlatform({ company: "Toptal" })?.platform.key).toBe("toptal");
+
+    expect(
+      detectAgencyPlatform({ url: "https://www.toptal.com/developers/job/1" })?.platform.key
+    ).toBe("toptal");
+    expect(
+      detectAgencyPlatform({
+        company: "Unknown",
+        url: "https://weworkremotely.com/remote-jobs/lemon-io-senior-react-full-stack-developer",
+      })?.platform.key
+    ).toBe("lemon-io");
+    expect(
+      detectAgencyPlatform({
+        company: "Somnio Software",
+        content: "Deazy factura al cliente final a su propia tarifa",
+      })?.platform.key
+    ).toBe("deazy");
+
+    // Legitimate direct employers must never be filtered
+    expect(detectAgencyPlatform({ company: "Vercel" })).toBeNull();
+    expect(detectAgencyPlatform({ company: "EPAM Systems" })).toBeNull();
+    expect(detectAgencyPlatform({ company: "Turing Labs" })).toBeNull();
+    expect(
+      detectAgencyPlatform({ company: "Arc", url: "https://remoteok.com/remote-jobs/remote-arc-1" })
+    ).toBeNull();
+  });
+
+  it("exempts platforms passed via allow", () => {
+    expect(detectAgencyPlatform({ company: "Proxify" }, { allow: ["proxify"] })).toBeNull();
+    expect(detectAgencyPlatform({ company: "Proxify" }, { allow: ["Proxify"] })).toBeNull();
+    expect(detectAgencyPlatform({ company: "Toptal" }, { allow: ["proxify"] })?.platform.key).toBe(
+      "toptal"
+    );
+  });
+
+  it("splitAgencyJobs separates direct employers from agency postings", () => {
+    const agencyDoc: JobMarkdownDocument = {
+      metadata: {
+        id: "wn-1",
+        title: "Senior Backend Developer (Node.js / Nest.js)",
+        company: "Proxify",
+        source: "workingnomads",
+        url: "https://www.workingnomads.com/job/go/1925654/",
+        posted_at: "2026-10-08T00:00:00Z",
+        crawled_at: "2026-10-15T00:00:00Z",
+        locations: ["Time zone: CET (+/- 3 hours)"],
+        salary: "",
+        tags: ["nodejs"],
+        status: "active",
+      },
+      markdownContent: "We are Proxify, a global network of developers.",
+    };
+    const directDoc: JobMarkdownDocument = {
+      metadata: {
+        id: "wwr-epam",
+        title: "Lead Cloud Engineer",
+        company: "EPAM Systems",
+        source: "weworkremotely",
+        url: "https://weworkremotely.com/remote-jobs/epam-systems-lead-cloud-engineer",
+        posted_at: "2026-09-30T00:00:00Z",
+        crawled_at: "2026-10-15T00:00:00Z",
+        locations: ["Anywhere in the World"],
+        salary: "",
+        tags: ["cloud"],
+        status: "active",
+      },
+      markdownContent: "Azure and Kubernetes platform engineering.",
+    };
+
+    const split = splitAgencyJobs([agencyDoc, directDoc]);
+    expect(split.filtered).toHaveLength(1);
+    expect(split.filtered[0].match.platform.key).toBe("proxify");
+    expect(split.jobs.map((d) => d.metadata.id)).toEqual(["wwr-epam"]);
+
+    // Disabling the filter keeps everything
+    const unfiltered = splitAgencyJobs([agencyDoc, directDoc], { filterAgencies: false });
+    expect(unfiltered.filtered).toHaveLength(0);
+    expect(unfiltered.jobs).toHaveLength(2);
+  });
+
+  it("drops agency jobs during search by default and reports them in stats", () => {
+    const makeDoc = (
+      id: string,
+      company: string,
+      url: string,
+      content = ""
+    ): JobMarkdownDocument => ({
+      metadata: {
+        id,
+        title: "Senior Backend Engineer",
+        company,
+        source: "remoteok",
+        url,
+        posted_at: "2026-10-08T00:00:00Z",
+        crawled_at: "2026-10-10T00:00:00Z",
+        locations: ["Worldwide"],
+        salary: "",
+        tags: ["backend"],
+        status: "active",
+      },
+      markdownContent: content || `# Senior Backend Engineer - ${company}`,
+    });
+
+    saveJobDocument(makeDoc("agency-1", "Proxify", "https://example.com/proxify-1"), AGENCY_JDS_DIR);
+    saveJobDocument(
+      makeDoc("agency-2", "Toptal", "https://weworkremotely.com/remote-jobs/toptal-backend-engineer"),
+      AGENCY_JDS_DIR
+    );
+    saveJobDocument(makeDoc("direct-1", "Doximity", "https://example.com/doximity-1"), AGENCY_JDS_DIR);
+
+    const stats = { agencyFiltered: 0, agencyMatches: [] as any[] };
+    const filtered = searchJDs({
+      jdsDir: AGENCY_JDS_DIR,
+      matchesDir: AGENCY_MATCHES_DIR,
+      months: 2,
+      stats,
+    });
+    expect(filtered.map((r) => r.id)).toEqual(["direct-1"]);
+    expect(stats.agencyFiltered).toBe(2);
+    expect(stats.agencyMatches.map((m) => m.platform).sort()).toEqual(["Proxify", "Toptal"]);
+
+    // Opting out returns them again
+    const included = searchJDs({
+      jdsDir: AGENCY_JDS_DIR,
+      matchesDir: AGENCY_MATCHES_DIR,
+      months: 2,
+      filterAgencies: false,
+    });
+    expect(included).toHaveLength(3);
+
+    // Exempting a single platform keeps only that one
+    const allowed = searchJDs({
+      jdsDir: AGENCY_JDS_DIR,
+      matchesDir: AGENCY_MATCHES_DIR,
+      months: 2,
+      allowedAgencies: ["proxify"],
+    });
+    expect(allowed.map((r) => r.id).sort()).toEqual(["agency-1", "direct-1"]);
+  });
+
+  it("parses bundled rejection rows into per-job evaluated records", async () => {
+    const { buildEvaluatedJobIndex, checkJobEvaluated, splitMultiValue } = await import("./utils.ts");
+
+    expect(splitMultiValue("Senior Vue Developer / Senior back-end Engineer")).toEqual([
+      "Senior Vue Developer",
+      "Senior back-end Engineer",
+    ]);
+    // Parenthesised slashes are not separators
+    expect(splitMultiValue("Senior Fullstack Developer (React.js / Node.js)")).toEqual([
+      "Senior Fullstack Developer (React.js / Node.js)",
+    ]);
+    expect(splitMultiValue("Machine Learning Engineer - IV (Fraud / CV) + ML Engineer")).toEqual([
+      "Machine Learning Engineer - IV (Fraud / CV) + ML Engineer",
+    ]);
+
+    fs.writeFileSync(
+      path.join(AGENCY_MATCHES_DIR, "2026-10-15-report-2136.md"),
+      [
+        "## ❌ Hard Gate Rejections",
+        "| Title | Company | Reason |",
+        "|---|---|---|",
+        "| Senior Vue Developer / Senior back-end Engineer / Head of Engineering | Lemon.io (Working Nomads) | ❌ marketplace + region |",
+      ].join("\n"),
+      "utf-8"
+    );
+
+    const index = buildEvaluatedJobIndex(AGENCY_MATCHES_DIR);
+    for (const title of ["Senior Vue Developer", "Senior back-end Engineer", "Head of Engineering"]) {
+      const check = checkJobEvaluated({ title, company: "Lemon.io" }, index);
+      expect(check.evaluated, `${title} should be evaluated`).toBe(true);
+      expect(check.status).toBe("rejected");
+    }
+  });
+
+  it("treats suffixed agency company names as already evaluated", async () => {
+    const { buildEvaluatedJobIndex, checkJobEvaluated } = await import("./utils.ts");
+
+    fs.writeFileSync(
+      path.join(AGENCY_MATCHES_DIR, "2026-10-15-report.md"),
+      [
+        "## ❌ Hard Gate Rejections",
+        "| Title | Company | Reason |",
+        "|---|---|---|",
+        "| Senior Backend Developer (Node.js / Nest.js) | Proxify AB | ❌ CET ±3h + contract marketplace |",
+      ].join("\n"),
+      "utf-8"
+    );
+
+    const index = buildEvaluatedJobIndex(AGENCY_MATCHES_DIR);
+    const check = checkJobEvaluated(
+      { title: "Senior Backend Developer (Node.js / Nest.js)", company: "Proxify" },
+      index
+    );
+    expect(check.evaluated).toBe(true);
+    expect(check.status).toBe("rejected");
   });
 });
 

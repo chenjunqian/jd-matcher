@@ -1,8 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { SearchOptions, SearchResultItem } from "./types.ts";
+import type { SearchOptions, SearchResultItem, SearchStats } from "./types.ts";
 import { parseFrontmatter, buildEvaluatedJobIndex, checkJobEvaluated } from "./utils.ts";
+import { detectAgencyPlatform } from "./agency_blocklist.ts";
 
 const DEFAULT_JDS_DIR = path.resolve(process.cwd(), "data/jds");
 const DEFAULT_MATCHES_DIR = path.resolve(process.cwd(), "data/matches");
@@ -45,6 +46,10 @@ export function searchJDs(options: SearchOptions = {}): SearchResultItem[] {
     unmatchedOnly = false,
     prioritizeUnmatched = true,
     includeMatched = false,
+    filterAgencies = true,
+    allowedAgencies = [],
+    inspectAgencyContent = true,
+    stats,
   } = options;
 
   if (!fs.existsSync(jdsDir)) {
@@ -80,6 +85,33 @@ export function searchJDs(options: SearchOptions = {}): SearchResultItem[] {
     if (!metadata.id || !metadata.title) continue;
 
     const relPath = path.relative(process.cwd(), filePath);
+
+    // Drop talent-agency / freelance-marketplace postings (Proxify, Lemon.io,
+    // Toptal, …) so they are never evaluated or recommended again.
+    if (filterAgencies) {
+      const agency = detectAgencyPlatform(
+        {
+          company: metadata.company,
+          title: metadata.title,
+          url: metadata.url,
+          content,
+        },
+        { allow: allowedAgencies, inspectContent: inspectAgencyContent }
+      );
+      if (agency) {
+        if (stats) {
+          stats.agencyFiltered += 1;
+          stats.agencyMatches.push({
+            platform: agency.platform.name,
+            title: metadata.title || "",
+            company: metadata.company || "",
+            url: metadata.url || "",
+            reason: agency.reason,
+          });
+        }
+        continue;
+      }
+    }
 
     // Check evaluation status against past match reports
     const evalCheck = checkJobEvaluated(
@@ -167,16 +199,27 @@ export function searchJDs(options: SearchOptions = {}): SearchResultItem[] {
 /**
  * Format search results as a clean Markdown report
  */
-export function formatResultsMarkdown(results: SearchResultItem[]): string {
+export function formatResultsMarkdown(
+  results: SearchResultItem[],
+  stats?: SearchStats
+): string {
   if (results.length === 0) {
-    return "No matching remote jobs found in the specified time window.";
+    const filteredNote =
+      stats && stats.agencyFiltered > 0
+        ? `\n\n> 🚫 Filtered ${stats.agencyFiltered} talent-agency / freelance-marketplace job(s).`
+        : "";
+    return "No matching remote jobs found in the specified time window." + filteredNote;
   }
 
   const newCount = results.filter((r) => !r.isEvaluated).length;
   const evalCount = results.filter((r) => r.isEvaluated).length;
 
   const lines = [
-    `### Knowledge Base Search Results (${results.length} Candidate JDs: ${newCount} New/Unmatched, ${evalCount} Evaluated)\n`,
+    `### Knowledge Base Search Results (${results.length} Candidate JDs: ${newCount} New/Unmatched, ${evalCount} Evaluated)${
+      stats && stats.agencyFiltered > 0
+        ? ` — 🚫 ${stats.agencyFiltered} agency-marketplace job(s) filtered`
+        : ""
+    }\n`,
     "| ID | Title | Company | Status | Source | Posted | Locations | Salary | Path |",
     "|---|---|---|---|---|---|---|---|---|",
   ];
@@ -202,6 +245,7 @@ export function formatResultsMarkdown(results: SearchResultItem[]): string {
 // CLI entry point
 function run() {
   const args = process.argv.slice(2);
+  const stats: SearchStats = { agencyFiltered: 0, agencyMatches: [] };
   const options: SearchOptions = {
     months: 2,
     tags: [],
@@ -209,6 +253,9 @@ function run() {
     location: "",
     limit: 20,
     prioritizeUnmatched: true,
+    filterAgencies: true,
+    allowedAgencies: [],
+    stats,
   };
   let format: "markdown" | "json" = "markdown";
 
@@ -242,6 +289,16 @@ function run() {
     } else if (args[i] === "--matches-dir" && args[i + 1]) {
       options.matchesDir = args[i + 1];
       i++;
+    } else if (args[i] === "--include-agencies" || args[i] === "--no-agency-filter") {
+      options.filterAgencies = false;
+    } else if (args[i] === "--allow-agency" && args[i + 1]) {
+      options.allowedAgencies = args[i + 1]
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      i++;
+    } else if (args[i] === "--no-agency-content-scan") {
+      options.inspectAgencyContent = false;
     }
   }
 
@@ -250,7 +307,13 @@ function run() {
   if (format === "json") {
     console.log(JSON.stringify(results, null, 2));
   } else {
-    console.log(formatResultsMarkdown(results));
+    console.log(formatResultsMarkdown(results, stats));
+    if (options.filterAgencies !== false && stats.agencyMatches.length > 0) {
+      console.log("\n#### 🚫 Filtered Agency / Marketplace Platforms\n");
+      for (const m of stats.agencyMatches) {
+        console.log(`- **${m.platform}** — ${m.title} (${m.company}) → ${m.reason}`);
+      }
+    }
   }
 }
 

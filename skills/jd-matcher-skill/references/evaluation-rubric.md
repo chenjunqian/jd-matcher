@@ -46,6 +46,7 @@ Recommendation reports are **append-only cumulative history** — never destruct
    - If a report for today already exists, use an `-HHMM` suffix (`YYYY-MM-DD-report-1615.md`) instead of overwriting.
    - Never delete or rewrite a previously written report. Prior recommendations remain part of the record.
    - If reports are tidied up, move them to `data/matches/archive/` (never outside it) — the dashboard aggregates that folder.
+   - **Table hygiene (dedupe depends on it)**: write exactly **one job per rejection row**, and put the **raw company name only** in the Company cell — no source annotations such as `Lemon.io (Working Nomads)`, no `A / B / C` title bundling. The exclusion engine matches rows by normalized `company + title`; bundled or annotated rows silently fail to match and the job will re-appear as "new" in later runs.
 2. Re-evaluating an already-evaluated job is prohibited unless the candidate updated their profile or explicitly asks. Matching runs must exclude jobs found in any existing report (top-level or `archive/`).
 3. The visual dashboard aggregates every report recursively, deduplicates jobs by URL with the newest evaluation winning, and groups matched jobs by evaluation date so the full history is always visible.
 4. Present an executive summary to the user in the active chat session.

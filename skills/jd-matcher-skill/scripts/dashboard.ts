@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { exec } from "node:child_process";
-import { parseFrontmatter, normalizeUrl, normalizeKey } from "./utils.ts";
+import { parseFrontmatter, normalizeUrl, normalizeKey, normalizeCompanyKey } from "./utils.ts";
 
 export interface CrawledJobSummary {
   id: string;
@@ -191,7 +191,7 @@ export function collectReportFiles(dirPath: string): string[] {
 /** Deterministic short id derived from URL (or company+title fallback) */
 function stableJobId(url: string, company: string, title: string): string {
   const basis =
-    normalizeUrl(url) || `${normalizeKey(company)}:::${normalizeKey(title)}` || title;
+    normalizeUrl(url) || `${normalizeCompanyKey(company)}:::${normalizeKey(title)}` || title;
   let hash = 5381;
   for (let i = 0; i < basis.length; i++) {
     hash = ((hash << 5) + hash + basis.charCodeAt(i)) >>> 0;
@@ -385,7 +385,7 @@ export function parseAllReports(matchesDir: string = DEFAULT_MATCHES_DIR): {
   const matchByKey = new Map<string, MatchedJobRecord>();
   for (const raw of rawMatches) {
     const key =
-      normalizeUrl(raw.url) || `${normalizeKey(raw.company)}:::${normalizeKey(raw.title)}`;
+      normalizeUrl(raw.url) || `${normalizeCompanyKey(raw.company)}:::${normalizeKey(raw.title)}`;
     const entry: EvaluationHistoryEntry = {
       date: raw.evaluatedAt,
       score: raw.matchScore,
@@ -454,7 +454,7 @@ export function parseAllReports(matchesDir: string = DEFAULT_MATCHES_DIR): {
   // ---- Merge rejections: newest reason wins, repeat count preserved ----
   const rejectionByKey = new Map<string, RejectionRecord>();
   for (const raw of rawRejections) {
-    const key = `${normalizeKey(raw.company)}:::${normalizeKey(raw.title)}`;
+    const key = `${normalizeCompanyKey(raw.company)}:::${normalizeKey(raw.title)}`;
     const existing = rejectionByKey.get(key);
 
     if (!existing) {
@@ -486,7 +486,7 @@ export function parseAllReports(matchesDir: string = DEFAULT_MATCHES_DIR): {
   // normalized company + title, keeping the newest evaluation's details.
   const byCompanyTitle = new Map<string, MatchedJobRecord[]>();
   for (const match of matchByKey.values()) {
-    const key = `${normalizeKey(match.company)}:::${normalizeKey(match.title)}`;
+    const key = `${normalizeCompanyKey(match.company)}:::${normalizeKey(match.title)}`;
     const group = byCompanyTitle.get(key);
     if (group) group.push(match);
     else byCompanyTitle.set(key, [match]);
@@ -505,7 +505,7 @@ export function parseAllReports(matchesDir: string = DEFAULT_MATCHES_DIR): {
         }
       }
       const loserKey =
-        normalizeUrl(loser.url) || `${normalizeKey(loser.company)}:::${normalizeKey(loser.title)}`;
+        normalizeUrl(loser.url) || `${normalizeCompanyKey(loser.company)}:::${normalizeKey(loser.title)}`;
       matchByKey.delete(loserKey);
     }
     winner.history.sort((a, b) =>
@@ -520,7 +520,7 @@ export function parseAllReports(matchesDir: string = DEFAULT_MATCHES_DIR): {
 
   // ---- Cross-status resolution: the newest evaluation decides matched vs rejected ----
   for (const [key, match] of [...matchByKey.entries()]) {
-    const rejectionKey = `${normalizeKey(match.company)}:::${normalizeKey(match.title)}`;
+    const rejectionKey = `${normalizeCompanyKey(match.company)}:::${normalizeKey(match.title)}`;
     const rejection = rejectionByKey.get(rejectionKey);
     if (!rejection) continue;
     if (
