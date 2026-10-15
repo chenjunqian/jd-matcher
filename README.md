@@ -31,7 +31,7 @@ It offers two distinct operation modes:
 The primary way to use JD Matcher is through its built-in **Agent Skill**. You don't need to deploy servers, manage databases, or configure webhooks. Just talk to your AI Agent!
 
 ### Why Use the Skill?
-- **Universal Agent Support**: Pre-configured symlinks in `.agents/skills/` and `.claude/skills/` ensure instant discovery by all major AI coding agents.
+- **Universal Agent Support**: One-command installer (`scripts/install-skill.sh`) links the skill into `.agents/skills/`, `.claude/skills/`, `~/.gemini/skills/`, `~/.config/opencode/skills/`, `~/.pi/agent/skills/` and more, so Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor and Gemini CLI all discover it instantly.
 - **Glean-Inspired Knowledge Base**: Job postings from RemoteOK and WeWorkRemotely are stored as structured, date-partitioned Markdown files (`data/jds/<YYYY>/<MM>/`).
 - **Two-Stage Fast Retrieval**: Native filesystem search inspects the last 2 months of postings in milliseconds without vector databases.
 - **Hard Constraints Gate**: Strict single-veto enforcement (e.g. immediately rejects US-only jobs for worldwide candidates, rejects below-floor salaries, etc.).
@@ -41,12 +41,75 @@ The primary way to use JD Matcher is through its built-in **Agent Skill**. You d
 
 ### 🤖 How to Use in Your AI Agent
 
-#### 1. Compatibility
-The skill is located at [`skills/jd-matcher-skill`](skills/jd-matcher-skill) and automatically symlinked for standard agent discovery:
-- `.agents/skills/jd-matcher-skill` (Antigravity, OpenCode, Codex, Pi, Cursor)
+#### 1. Installation
+
+Two ways to install — ask your AI Agent, or run the installer yourself. Both support **this project only** and **global (all projects, all agents)** scope. No extra dependencies are required.
+
+**Option A — Let your AI Agent install it** (works in Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor):
+
+```markdown
+"Install the jd-matcher skill for me — use the project or global scope that fits, register it for all my AI agents, and verify it is discoverable."
+```
+
+The agent finds `scripts/install-skill.sh`, picks the right scope, runs it, and confirms the skill shows up in `/skill:` discovery.
+
+**Option B — Run the installer yourself**
+
+```bash
+# Interactive: choose this project / global / both, then confirm
+bash scripts/install-skill.sh
+
+# Global install for every AI agent detected on this machine
+bash scripts/install-skill.sh --scope global
+
+# This repository only (.agents/skills + .claude/skills)
+bash scripts/install-skill.sh --scope local
+
+# Copy instead of symlink (Windows, cloud agents, read-only repos) + the Kami design skill
+bash scripts/install-skill.sh --scope global --copy --with-kami
+
+# Inspect / roll back
+bash scripts/install-skill.sh --list
+bash scripts/install-skill.sh --scope global --dry-run
+bash scripts/install-skill.sh --scope global --uninstall
+```
+
+| Flag | Meaning |
+|---|---|
+| `--scope local\|global\|both` | Install into this repository, or into user-level agent directories |
+| `--target <name>[,...]`, `--target all` | Limit to specific agents: `agents`, `claude`, `codex`, `cursor`, `gemini`, `antigravity`, `opencode`, `pi` |
+| `--with-kami` | Also install the bundled `kami` design skill |
+| `--copy` | Copy files instead of symlinking (needed on Windows / for cloud agents) |
+| `--force` | Replace a same-named skill that was installed by hand |
+| `--dry-run` / `--uninstall` / `--list` | Preview, remove, or inspect installations |
+
+Installed locations:
+
+| Scope | Path | Agents |
+|---|---|---|
+| Project | `.agents/skills/` | Antigravity, OpenCode, Codex, Pi, Cursor, Gemini CLI |
+| Project | `.claude/skills/` | Claude Code |
+| Global | `~/.agents/skills/` | Cross-client convention (all of the above) |
+| Global | `~/.claude/skills/` | Claude Code |
+| Global | `~/.config/opencode/skills/` | OpenCode |
+| Global | `~/.gemini/skills/` | Gemini CLI |
+| Global | `~/.gemini/config/skills/` | Google Antigravity |
+| Global | `~/.cursor/skills/` | Cursor |
+| Global | `~/.codex/skills/` | Codex CLI |
+| Global | `~/.pi/agent/skills/` | Pi |
+
+> **Symlink (default) vs `--copy`**: symlinks keep a single source of truth, so `git pull` updates every installed agent instantly. `--copy` snapshots the skill — re-run the installer after pulling. The installer never overwrites a skill it did not create unless you pass `--force`, and `--uninstall` only removes links/copies it made.
+>
+> **Where does my data go?** The skill writes its knowledge base (`data/jds/`, `data/profile/`, `data/matches/`) relative to the folder your agent is working in. A global install therefore still keeps every project's jobs and resume data separate.
+
+#### 2. Compatibility
+The canonical skill lives at [`skills/jd-matcher-skill`](skills/jd-matcher-skill) and is symlinked into standard agent discovery paths by the installer:
+- `.agents/skills/jd-matcher-skill` (Antigravity, OpenCode, Codex, Pi, Cursor, Gemini CLI)
 - `.claude/skills/jd-matcher-skill` (Claude Code)
 
-#### 2. First-Time Setup (Onboarding)
+Clone-and-go: these two symlinks are already committed, so agents discover the skill immediately after a fresh `git clone`. Use the installer when you want it available **globally** or in the additional agent directories (`.cursor/`, `.gemini/`, `.opencode/`).
+
+#### 3. First-Time Setup (Onboarding)
 Before matching, ensure your candidate profile is ready under `data/profile/`:
 
 - `data/profile/resume.md`: Your technical background, core skills, years of experience, and project impact.
@@ -58,7 +121,7 @@ Before matching, ensure your candidate profile is ready under `data/profile/`:
 >
 > *(Note: `data/profile/resume.md` and `expectations.md` are strictly `.gitignore`d to prevent accidental leakage of personal info!)*
 
-#### 3. Agent Prompts
+#### 4. Agent Prompts
 Simply instruct your AI Agent in natural language:
 
 ```markdown
@@ -71,7 +134,7 @@ Simply instruct your AI Agent in natural language:
 "Evaluate available backend engineering opportunities against my expectations and open the visual dashboard."
 ```
 
-#### 4. What the Agent Does Automatically
+#### 5. What the Agent Does Automatically
 ```
 1. Profile Check    ──▶  Verifies resume.md & expectations.md (prompts user if missing)
 2. Crawl & Ingest   ──▶  Runs crawl script to fetch fresh listings into data/jds/

@@ -23,6 +23,11 @@
 ## Project Structure
 
 ```
+├── scripts/
+│   └── install-skill.sh       # Install jd-matcher-skill locally or globally for AI agents
+├── skills/
+│   ├── jd-matcher-skill/      # Local-first job matching Agent Skill
+│   └── kami/                  # Kami LLM orchestration skill
 ├── wrangler.toml              # Config: D1, KV, Vectorize, Queue, Cron, observability
 ├── src/
 │   ├── index.ts               # Entry: Hono routes + scheduled() + queue()

@@ -27,6 +27,22 @@ Results are presented in an elegant, interactive HTML visual dashboard styled ac
 
 ---
 
+## Installation
+
+When the user asks to install this skill (project-local or global), run the installer from the repository root:
+
+```bash
+bash scripts/install-skill.sh                              # interactive scope prompt
+bash scripts/install-skill.sh --scope global               # all detected AI agents, user-level
+bash scripts/install-skill.sh --scope local                # this repository only
+bash scripts/install-skill.sh --scope global --copy        # copy instead of symlink (Windows / cloud agents)
+bash scripts/install-skill.sh --scope global --uninstall    # remove
+```
+
+Useful flags: `--target <agents,claude,codex,cursor,gemini,antigravity,opencode,pi|all>`, `--with-kami`, `--force`, `--dry-run`, `--list`. Symlinks are the default so `git pull` updates the installed skill everywhere; with `--copy` the installer must be re-run after each pull. The installer refuses to overwrite a skill it did not create unless `--force` is given. See [`README.md`](../../README.md#1-installation) for the full location table.
+
+---
+
 ## Knowledge Base Directory Layout
 
 ```
