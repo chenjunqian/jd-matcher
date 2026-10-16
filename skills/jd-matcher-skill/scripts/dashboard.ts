@@ -204,7 +204,7 @@ function resolveEvaluatedAt(content: string, reportRelPath: string, fullPath: st
   const fromName = path.basename(reportRelPath).match(/(\d{4}-\d{2}-\d{2})/);
   if (fromName) return fromName[1];
 
-  const fromContent = content.match(/(?:评估时间|Evaluation Date)[^\d\n]{0,24}(\d{4}-\d{2}-\d{2})/i);
+  const fromContent = content.match(/Evaluation Date[^\d\n]{0,24}(\d{4}-\d{2}-\d{2})/i);
   if (fromContent) return fromContent[1];
 
   try {
@@ -256,17 +256,17 @@ export function parseAllReports(matchesDir: string = DEFAULT_MATCHES_DIR): {
       const titleMatch = block.match(/\[(.*?)\]\((.*?)\)/);
       if (!titleMatch) continue;
 
-      const companyMatch = block.match(/(?:Company|公司)[:\s*]+([^\n\r*]+)/i);
-      const sourceMatch = block.match(/(?:Source|来源)[:\s*]+([^\n\r*]+)/i);
-      const postedMatch = block.match(/(?:Posted|发布时间)[:\s*]+([^\n\r*]+)/i);
-      const locMatch = block.match(/(?:Locations?|地点要求)[:\s*]+([^\n\r*]+)/i);
-      const salMatch = block.match(/(?:Salary|公开薪酬)[:\s*]+([^\n\r*]+)/i);
-      const scoreMatch = block.match(/(?:Match Score|匹配得分)[:\s*]+(?:\*\*)?([0-9.]+)/i);
-      const localPathMatch = block.match(/(?:Local File|本地归档)[:\s*]+`?([^\n\r`]+)`?/i);
+      const companyMatch = block.match(/Company[:\s*]+([^\n\r*]+)/i);
+      const sourceMatch = block.match(/Source[:\s*]+([^\n\r*]+)/i);
+      const postedMatch = block.match(/Posted[:\s*]+([^\n\r*]+)/i);
+      const locMatch = block.match(/Locations?[:\s*]+([^\n\r*]+)/i);
+      const salMatch = block.match(/Salary[:\s*]+([^\n\r*]+)/i);
+      const scoreMatch = block.match(/Match Score[:\s*]+(?:\*\*)?([0-9.]+)/i);
+      const localPathMatch = block.match(/Local File[:\s*]+`?([^\n\r`]+)`?/i);
       const whyMatchBlock = block.match(
-        /(?:Why Match|核心契合点)[^:]*[:\s*]+([\s\S]*?)(?=(?:投递与面试建议|Application Tips|###|$))/i
+        /Why Match[^:]*[:\s*]+([\s\S]*?)(?=(?:[^\n]*Application Tips|###|$))/i
       );
-      const tipsBlock = block.match(/(?:Application Tips|投递与面试建议)[^:]*[:\s*]+([\s\S]*?)(?=(?:###|##|$))/i);
+      const tipsBlock = block.match(/Application Tips[^:]*[:\s*]+([\s\S]*?)(?=(?:###|##|$))/i);
 
       rawMatches.push({
         title: titleMatch[1].trim(),
@@ -274,7 +274,7 @@ export function parseAllReports(matchesDir: string = DEFAULT_MATCHES_DIR): {
         company: companyMatch ? companyMatch[1].trim() : "Unknown",
         source: sourceMatch ? sourceMatch[1].trim() : "RemoteOK",
         postedAt: postedMatch ? postedMatch[1].trim() : "Recent",
-        locations: locMatch ? locMatch[1].split(/[,，]/).map((s) => s.trim()) : ["Worldwide"],
+        locations: locMatch ? locMatch[1].split(",").map((s) => s.trim()) : ["Worldwide"],
         salary: salMatch ? salMatch[1].trim() : "Not specified",
         matchScore: scoreMatch ? parseFloat(scoreMatch[1]) : 7.0,
         localPath: localPathMatch ? localPathMatch[1].trim() : undefined,
@@ -301,21 +301,32 @@ export function parseAllReports(matchesDir: string = DEFAULT_MATCHES_DIR): {
     // --- Hard gate rejection table rows ---
     const lines = content.split("\n");
     let inRejectionSection = false;
+    let inTableBody = false;
     for (const line of lines) {
-      if (line.match(/排除与拒否|Hard Gate Rejections|Rejected/i)) {
+      if (line.match(/Hard Gate Rejections|Rejected/i)) {
         inRejectionSection = true;
+        inTableBody = false;
         continue;
       }
       if (inRejectionSection && line.startsWith("## ")) {
         inRejectionSection = false;
+        inTableBody = false;
       }
-      if (!inRejectionSection || !line.startsWith("|") || line.includes("---")) continue;
+      if (!inRejectionSection) continue;
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("|")) {
+        inTableBody = false;
+        continue;
+      }
+      if (/^\|[\s:|-]+\|$/.test(trimmed) && trimmed.includes("-")) {
+        inTableBody = true;
+        continue;
+      }
+      if (!inTableBody) continue;
 
-      const cols = line.split("|").map((s) => s.trim()).filter(Boolean);
+      const cols = trimmed.split("|").map((s) => s.trim()).filter(Boolean);
       if (cols.length < 3) continue;
       const firstCol = cols[0].replace(/[*_]/g, "").trim();
-      const lower = firstCol.toLowerCase();
-      if (lower.includes("title") || firstCol.includes("职位") || firstCol.includes("公司")) continue;
 
       let title = firstCol;
       let url: string | undefined;
@@ -647,7 +658,7 @@ export function generateDashboardHtml(
   <title>JD Matcher</title>
   <style>
     /* ==========================================================================
-       kami · 紙 Design System Tokens
+       Kami Design System Tokens
        Warm Parchment, Single Ink-Blue Accent, Editorial Serif Typography
        ========================================================================== */
     :root {
@@ -1442,7 +1453,7 @@ export function generateDashboardHtml(
 
     <!-- Footer -->
     <footer>
-      Styled with <a href="https://github.com/tw93/kami" target="_blank" rel="noopener noreferrer">kami · 紙</a> Design System · Warm Parchment, Ink-Blue Accent & Serif Hierarchy
+      Styled with <a href="https://github.com/tw93/kami" target="_blank" rel="noopener noreferrer">Kami</a> Design System · Warm Parchment, Ink-Blue Accent & Serif Hierarchy
     </footer>
 
   </div>

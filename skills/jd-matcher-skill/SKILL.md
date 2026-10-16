@@ -148,7 +148,7 @@ node skills/jd-matcher-skill/scripts/search.ts --months 2 --tags typescript,reac
 
 Follow the evaluation rubric: [evaluation-rubric.md](./references/evaluation-rubric.md).
 
-1. **Prioritize Unmatched Opportunities (评估去重与优先原则)**:
+1. **Prioritize Unmatched Opportunities**:
    - **Receive only fresh jobs**: The Step 3 query should already pass `--exclude-matched`, so every JD handed to evaluation is either fresh or explicitly requested.
    - **Focus on Fresh Opportunities**: Prioritize JDs labeled `🟢 New` that have not been evaluated before.
    - **Ignore Already Evaluated Jobs**: For JDs already evaluated in past reports (`⚪ Matched` or `❌ Rejected`), **skip and ignore them** unless the candidate has explicitly updated their resume or relaxed their hard constraints. If such a job is filtered out by the search script, respect that and do not re-add it manually. This prevents redundant token consumption and avoids re-recommending duplicate jobs to the user.

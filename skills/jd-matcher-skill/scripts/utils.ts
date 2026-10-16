@@ -279,7 +279,7 @@ export function splitMultiValue(text?: string): string[] {
   const value = (text ?? "").trim();
   if (!value) return [];
 
-  const SEPARATORS = [/^\s+\/\s+/, /^\s*·\s*/, /^\s*、\s*/];
+  const SEPARATORS = [/^\s+\/\s+/, /^\s*·\s*/];
   const parts: string[] = [];
   let depth = 0;
   let current = "";
@@ -374,13 +374,13 @@ export function buildEvaluatedJobIndex(matchesDir: string): EvaluatedJobIndex {
       const title = titleLinkMatch[1].trim();
       const url = titleLinkMatch[2].trim();
 
-      const companyMatch = block.match(/(?:Company|公司)[:\s*]+([^\n\r*]+)/i);
+      const companyMatch = block.match(/Company[:\s*]+([^\n\r*]+)/i);
       const company = companyMatch ? companyMatch[1].trim() : "Unknown";
 
-      const localPathMatch = block.match(/(?:Local File|本地归档)[:\s*]+`?([^\n\r`]+)`?/i);
+      const localPathMatch = block.match(/Local File[:\s*]+`?([^\n\r`]+)`?/i);
       const localPath = localPathMatch ? localPathMatch[1].trim() : undefined;
 
-      const sourceMatch = block.match(/(?:Source|来源)[:\s*]+([^\n\r*]+)/i);
+      const sourceMatch = block.match(/Source[:\s*]+([^\n\r*]+)/i);
       let id: string | undefined;
       if (sourceMatch) {
         const idMatch = sourceMatch[1].match(/`((?:rok-\d+|wwr-[a-z0-9_-]+))`?/i);
@@ -401,27 +401,30 @@ export function buildEvaluatedJobIndex(matchesDir: string): EvaluatedJobIndex {
     // 2. Parse Hard Gate Rejections table
     const lines = content.split("\n");
     let inRejectionSection = false;
+    let inTableBody = false;
     for (const line of lines) {
-      if (line.match(/排除与拒否|Hard Gate Rejections|Rejected/i)) {
+      if (line.match(/Hard Gate Rejections|Rejected/i)) {
         inRejectionSection = true;
+        inTableBody = false;
         continue;
       }
       if (inRejectionSection && line.startsWith("## ")) {
         inRejectionSection = false;
+        inTableBody = false;
       }
-      if (
-        inRejectionSection &&
-        line.startsWith("|") &&
-        !line.includes("---") &&
-        !line.includes("公司") &&
-        !line.includes("Company")
-      ) {
-        const parts = line.split("|").map((s) => s.trim()).filter(Boolean);
-        if (
-          parts.length >= 2 &&
-          !parts[0].toLowerCase().includes("title") &&
-          !parts[0].toLowerCase().includes("职位")
-        ) {
+      if (!inRejectionSection) continue;
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("|")) {
+        inTableBody = false;
+        continue;
+      }
+      if (/^\|[\s:|-]+\|$/.test(trimmed) && trimmed.includes("-")) {
+        inTableBody = true;
+        continue;
+      }
+      if (inTableBody) {
+        const parts = trimmed.split("|").map((s) => s.trim()).filter(Boolean);
+        if (parts.length >= 2) {
           let title = parts[0];
           let url: string | undefined;
           const linkMatch = title.match(/\[(.*?)\]\((.*?)\)/);

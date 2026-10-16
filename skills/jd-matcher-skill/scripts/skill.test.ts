@@ -253,9 +253,9 @@ describe("Cumulative Match History", () => {
   const TEST_MATCHES_DIR = path.resolve(process.cwd(), "data/test_history_matches");
 
   const buildReport = (date: string, score: number, note: string) => `# Remote Job Match Report
-- **Evaluation Date (评估时间)**: ${date}
+- **Evaluation Date**: ${date}
 
-## 🎯 Top Matches (重点推荐岗位)
+## 🎯 Top Matches
 
 ### 1. [Software Engineer](https://weworkremotely.com/remote-jobs/acme-software-engineer)
 - **Company**: Acme
@@ -269,9 +269,9 @@ describe("Cumulative Match History", () => {
 - **Application Tips**:
   - Highlight TypeScript.
 
-## ⛔ Hard Gate Rejections (排除与拒否)
+## ⛔ Hard Gate Rejections
 
-| 职位 | 公司 / 来源 | 拒否原因 |
+| Role Title | Company | Rejection Reason |
 | :--- | :--- | :--- |
 | Junior Dev | Beta | ❌ US Only |
 `;
@@ -355,7 +355,7 @@ describe("Cumulative Match History", () => {
     const { parseAllReports } = await import("./dashboard.ts");
 
     const mk = (date: string, url: string, score: number) => `# Report
-- **Evaluation Date (评估时间)**: ${date}
+- **Evaluation Date**: ${date}
 
 ## 🎯 Top Matches
 
@@ -404,7 +404,7 @@ describe("Cumulative Match History", () => {
     );
     fs.writeFileSync(
       path.join(TEST_MATCHES_DIR, "2026-10-15-report.md"),
-      `# Report\n- **Evaluation Date (评估时间)**: 2026-10-15\n\n## ⛔ Hard Gate Rejections\n\n| 职位 | 公司 / 来源 | 拒否原因 |\n| :--- | :--- | :--- |\n| Software Engineer | Acme | ❌ US Only |\n`,
+      `# Report\n- **Evaluation Date**: 2026-10-15\n\n## ⛔ Hard Gate Rejections\n\n| Role Title | Company | Rejection Reason |\n| :--- | :--- | :--- |\n| Software Engineer | Acme | ❌ US Only |\n`,
       "utf-8"
     );
 
