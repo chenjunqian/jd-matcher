@@ -44,6 +44,7 @@
 │   │   │   └── embedding.ts   # OpenRouter embeddings
 │   │   ├── crawler/
 │   │   │   ├── index.ts       # Crawler registry
+│   │   │   ├── agency_blocklist.ts # Talent-agency / freelance-marketplace blocklist (parity with skills/jd-matcher-skill)
 │   │   │   ├── remote_ok.ts   # RemoteOK scraper
 │   │   │   ├── weworkremotely.ts # WeWorkRemotely scraper (all categories)
 │   │   │   ├── remotive.ts    # Remotive API scraper (all categories)
@@ -64,9 +65,9 @@
 │   │   ├── constants.ts       # All Telegram reply texts
 │   │   └── handlers/          # start, help, all_jobs, jobs, upload_resume, expectation
 │   └── jobs/
-│       ├── crawl.ts           # Fetch jobs from RemoteOK, WWR, Remotive, Jobspresso, Working Nomads, NoDesk
+│       ├── crawl.ts           # Fetch jobs (agency postings filtered out) from RemoteOK, WWR, Remotive, Jobspresso, Working Nomads, NoDesk
 │       ├── embed.ts           # Generate embeddings → store in Vectorize
-│       ├── match.ts           # Vector search → AI agent (Vercel AI SDK) → store matches
+│       ├── match.ts           # Vector search → agency filter → AI agent (Vercel AI SDK) → store matches
 │       ├── match.test.ts
 │       ├── notify.ts          # Unnotified matches → Telegram API
 │       └── notify.test.ts
@@ -97,6 +98,27 @@ Email notification (in notify.ts):
 MatchContainer (Cloudflare Containers):
   Container class with HTTP server  ──▶  POST /match  ──▶  runMatchAgent  ──▶  results JSON
 ```
+
+### Agency filtering
+
+Mirrors `skills/jd-matcher-skill/scripts/agency_blocklist.ts`. Talent-agency /
+freelance-marketplace postings (Proxify, Lemon.io, Toptal, Upwork, …) are dropped at crawl
+ingestion, skipped before the match agent runs, never notified, and hidden from `/all_jobs`
+and `/jobs` listings.
+
+Matching is conservative, to avoid filtering out direct employers:
+
+1. **Company name** — normalized exact match, taken from an explicit company field or the
+   `<Company>: <Role>` / `<Role> at <Company>` title form (punctuation, parentheticals and legal
+   suffixes ignored: `Proxify AB` → `proxify`, `Lemon.io` → `lemon io`).
+2. **Owned host** — e.g. `toptal.com`, `lemon.io`, `a.team` (subdomains included).
+3. **Aggregator URL slug** — e.g. `weworkremotely.com/remote-jobs/toptal-…` or
+   `remoteok.com/remote-jobs/remote-…-proxify-1137475`.
+4. **Body marker** — unambiguous phrases used only by platform-managed postings (`deazy`), so
+   agency subcontracts reposted under a different company name are still caught.
+
+Extend `AGENCY_PLATFORMS` in `src/lib/crawler/agency_blocklist.ts` to block more platforms;
+keep the list in sync with the skill.
 
 ## Commands
 

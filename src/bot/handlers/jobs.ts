@@ -2,6 +2,7 @@ import { InlineKeyboard } from "grammy";
 import type { BotContext } from "../bot.js";
 import { getUserInfoByTelegramId } from "../../lib/db/user_info.js";
 import { getUserMatchedJobDetailList, getUserMatchedJobDetailListTotalCount } from "../../lib/db/user_matched_job.js";
+import { isAgencyJobDetail } from "../../lib/crawler/agency_blocklist.js";
 import { LOGIN_HINT } from "../constants.js";
 
 const PREFIX = "matched_jobs_callback_data_";
@@ -10,6 +11,16 @@ const TOTAL = PREFIX + "total_page_";
 const NEXT = PREFIX + "next_page";
 const PREV = PREFIX + "pre_page";
 const SIZE = 10;
+const OVERSCAN = SIZE * 3;
+
+/**
+ * Hide talent-agency / freelance-marketplace matches stored before the filter
+ * existed. A small overscan keeps pages full after filtering.
+ */
+async function loadDirectMatches(db: D1Database, userId: string, offset: number, limit: number) {
+  const rows = await getUserMatchedJobDetailList(db, userId, 0, offset + limit + OVERSCAN);
+  return rows.filter((j) => !isAgencyJobDetail(j)).slice(offset, offset + limit);
+}
 
 function fmt(jobs: Array<{ title: string; link: string; location: string; salary: string; matchScore: string; updateTime: string }>): string {
   return jobs.map((j) =>
@@ -27,7 +38,7 @@ function kb(page: number, total: number): InlineKeyboard {
 export async function jobsCommandHandler(ctx: BotContext) {
   const user = await getUserInfoByTelegramId(ctx.env.DB, String(ctx.from!.id));
   if (!user) return void await ctx.reply(LOGIN_HINT);
-  const jobs = await getUserMatchedJobDetailList(ctx.env.DB, user.id, 0, SIZE);
+  const jobs = await loadDirectMatches(ctx.env.DB, user.id, 0, SIZE);
   const total = Math.ceil((await getUserMatchedJobDetailListTotalCount(ctx.env.DB, user.id)) / SIZE) || 1;
   await ctx.reply(fmt(jobs), { reply_markup: kb(0, total) });
 }
@@ -50,7 +61,7 @@ export async function jobsCallbackHandler(ctx: BotContext) {
   else if (cb.data === NEXT) page++;
   else return void await ctx.answerCallbackQuery();
 
-  const jobs = await getUserMatchedJobDetailList(ctx.env.DB, user.id, page * SIZE, SIZE);
+  const jobs = await loadDirectMatches(ctx.env.DB, user.id, page * SIZE, SIZE);
   const total = Math.ceil((await getUserMatchedJobDetailListTotalCount(ctx.env.DB, user.id)) / SIZE) || 1;
   await ctx.editMessageText(fmt(jobs), { reply_markup: kb(page, total) });
 }

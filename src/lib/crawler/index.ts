@@ -4,3 +4,15 @@ export { getRemotiveJobs, parseRemotiveResponse } from "./remotive.js";
 export { getJobspressoJobs, parseJobspressoRSS } from "./jobspresso.js";
 export { getWorkingNomadsJobs, parseWorkingNomadsResponse } from "./workingnomads.js";
 export { getNoDeskJobs, parseNoDeskRSS } from "./nodesk.js";
+export {
+  AGENCY_PLATFORMS,
+  commonJobFields,
+  detectAgencyJob,
+  detectAgencyPlatform,
+  extractCompanyFromTitle,
+  filterAgencyJobs,
+  isAgencyJobDetail,
+  jobDetailFields,
+  normalizeCompanyKey,
+} from "./agency_blocklist.js";
+export type { AgencyJobFields, AgencyMatch, AgencyPlatform } from "./agency_blocklist.js";

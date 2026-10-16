@@ -7,6 +7,7 @@ import {
   getWorkingNomadsJobs,
   getNoDeskJobs,
 } from "../lib/crawler/index.js";
+import { commonJobFields, filterAgencyJobs } from "../lib/crawler/agency_blocklist.js";
 import { createJobDetailIfNotExist } from "../lib/db/job_detail.js";
 
 function genId(): string {
@@ -39,58 +40,40 @@ function toEntity(job: CommonJob, source: string) {
   };
 }
 
+/**
+ * Fetch jobs from one source, drop talent-agency / freelance-marketplace
+ * postings, then persist the direct-employer jobs.
+ */
+async function crawlSource(
+  env: Env,
+  source: string,
+  label: string,
+  fetcher: () => Promise<CommonJob[]>,
+): Promise<void> {
+  console.log(`[crawl] ${label}`);
+  try {
+    const jobs = await fetcher();
+    const { jobs: direct, filtered } = filterAgencyJobs(jobs, commonJobFields);
+    for (const { job, match } of filtered) {
+      console.log(
+        `[crawl] 🚫 skipped agency posting: ${job.title} [${match.platform.name}] (${match.reason})`,
+      );
+    }
+    await createJobDetailIfNotExist(env.DB, direct.map((j) => toEntity(j, source)));
+    console.log(
+      `[crawl] stored ${direct.length} ${label}` +
+        (filtered.length ? ` (${filtered.length} agency filtered)` : ""),
+    );
+  } catch (e) {
+    console.error(`[crawl] ${label} error:`, e);
+  }
+}
+
 export async function handleCrawl(env: Env): Promise<void> {
-  console.log("[crawl] RemoteOK");
-  try {
-    const jobs = await getRemoteOkJobs(1);
-    await createJobDetailIfNotExist(env.DB, jobs.map((j) => toEntity(j, "remoteok")));
-    console.log(`[crawl] stored ${jobs.length} RemoteOK`);
-  } catch (e) {
-    console.error("[crawl] RemoteOK error:", e);
-  }
-
-  console.log("[crawl] WeWorkRemotely");
-  try {
-    const jobs = await getAllWwrJobs();
-    await createJobDetailIfNotExist(env.DB, jobs.map((j) => toEntity(j, "weworkremotely")));
-    console.log(`[crawl] stored ${jobs.length} WeWorkRemotely`);
-  } catch (e) {
-    console.error("[crawl] WeWorkRemotely error:", e);
-  }
-
-  console.log("[crawl] Remotive");
-  try {
-    const jobs = await getRemotiveJobs(100);
-    await createJobDetailIfNotExist(env.DB, jobs.map((j) => toEntity(j, "remotive")));
-    console.log(`[crawl] stored ${jobs.length} Remotive`);
-  } catch (e) {
-    console.error("[crawl] Remotive error:", e);
-  }
-
-  console.log("[crawl] Jobspresso");
-  try {
-    const jobs = await getJobspressoJobs();
-    await createJobDetailIfNotExist(env.DB, jobs.map((j) => toEntity(j, "jobspresso")));
-    console.log(`[crawl] stored ${jobs.length} Jobspresso`);
-  } catch (e) {
-    console.error("[crawl] Jobspresso error:", e);
-  }
-
-  console.log("[crawl] Working Nomads");
-  try {
-    const jobs = await getWorkingNomadsJobs(100);
-    await createJobDetailIfNotExist(env.DB, jobs.map((j) => toEntity(j, "workingnomads")));
-    console.log(`[crawl] stored ${jobs.length} Working Nomads`);
-  } catch (e) {
-    console.error("[crawl] Working Nomads error:", e);
-  }
-
-  console.log("[crawl] NoDesk");
-  try {
-    const jobs = await getNoDeskJobs();
-    await createJobDetailIfNotExist(env.DB, jobs.map((j) => toEntity(j, "nodesk")));
-    console.log(`[crawl] stored ${jobs.length} NoDesk`);
-  } catch (e) {
-    console.error("[crawl] NoDesk error:", e);
-  }
+  await crawlSource(env, "remoteok", "RemoteOK", () => getRemoteOkJobs(1));
+  await crawlSource(env, "weworkremotely", "WeWorkRemotely", () => getAllWwrJobs());
+  await crawlSource(env, "remotive", "Remotive", () => getRemotiveJobs(100));
+  await crawlSource(env, "jobspresso", "Jobspresso", () => getJobspressoJobs());
+  await crawlSource(env, "workingnomads", "Working Nomads", () => getWorkingNomadsJobs(100));
+  await crawlSource(env, "nodesk", "NoDesk", () => getNoDeskJobs());
 }

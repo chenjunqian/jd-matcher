@@ -3,6 +3,7 @@ import { getUsersWithResume } from "../lib/db/user_info.js";
 import { getJobDetailsByIds } from "../lib/db/job_detail.js";
 import { createMatchJobIfNotExist, getExistingMatchedJobIds } from "../lib/db/user_matched_job.js";
 import { getVectorById, querySimilar } from "../lib/vectorize/index.js";
+import { filterAgencyJobs, jobDetailFields } from "../lib/crawler/agency_blocklist.js";
 import { callAgent } from "./agent_client.js";
 
 function oneMonthAgo(): string {
@@ -27,14 +28,26 @@ export async function matchUser(env: Env, user: UserInfo): Promise<void> {
     return;
   }
 
-  const jobs = (await getJobDetailsByIds(env.DB, hits.map((h) => h.id))).filter((j) => j.updateTime >= oneMonthAgo());
+  const recent = (await getJobDetailsByIds(env.DB, hits.map((h) => h.id))).filter((j) => j.updateTime >= oneMonthAgo());
+
+  // Drop talent-agency / freelance-marketplace postings already stored in D1 so
+  // they are never sent to the agent (same rule as the local-first skill).
+  const { jobs, filtered: agencyJobs } = filterAgencyJobs(recent, jobDetailFields);
+  for (const { job, match } of agencyJobs) {
+    console.log(
+      `[match] 🚫 skipped agency posting for user ${user.id}: ${job.title} [${match.platform.name}] (${match.reason})`
+    );
+  }
+
   if (!jobs.length) {
     console.log(`[match] no recent jobs for user ${user.id}`);
     return;
   }
 
   const existingIds = await getExistingMatchedJobIds(env.DB, user.id, jobs.map((j) => j.id));
-  console.log(`[match] user ${user.id}: similar=${hits.length} recent=${jobs.length} already_matched=${existingIds.length}`);
+  console.log(
+    `[match] user ${user.id}: similar=${hits.length} recent=${jobs.length} agency=${agencyJobs.length} already_matched=${existingIds.length}`
+  );
 
   const newJobs = jobs.filter((j) => !existingIds.includes(j.id));
   if (!newJobs.length) {

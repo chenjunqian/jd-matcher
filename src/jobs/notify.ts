@@ -5,6 +5,7 @@ import {
   getUserNonNotifiedJobList,
   updateMatchJobsNotifiedByIds,
 } from "../lib/db/user_matched_job.js";
+import { filterAgencyJobs, jobDetailFields } from "../lib/crawler/agency_blocklist.js";
 import { buildJobNotificationHtml, buildJobNotificationText } from "../lib/email/template.js";
 
 function buildMessage(jobs: UserMatchedDetailJob[]): string {
@@ -94,7 +95,15 @@ export async function handleNotify(env: Env): Promise<void> {
         try {
           const cnt = await getUserNonNotifiedJobTotalCount(env.DB, u.id);
           if (!cnt) continue;
-          const jobs = await getUserNonNotifiedJobList(env.DB, u.id, 0, 10);
+          const fetched = await getUserNonNotifiedJobList(env.DB, u.id, 0, 10);
+
+          // Legacy talent-agency / marketplace matches may already be stored in
+          // D1: never notify them and retire them so they are not re-checked.
+          const { jobs, filtered: agencyJobs } = filterAgencyJobs(fetched, jobDetailFields);
+          if (agencyJobs.length) {
+            console.log(`[notify] 🚫 skipped ${agencyJobs.length} agency posting(s) for user ${u.id}`);
+            await updateMatchJobsNotifiedByIds(env.DB, u.id, agencyJobs.map(({ job }) => job.id));
+          }
           if (!jobs.length) continue;
 
           if (u.telegramId) {

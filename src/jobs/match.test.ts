@@ -168,6 +168,49 @@ describe("handleMatch", () => {
     expect(callArgs[3][0].jobDescription).toBe("Looking for a senior developer with TS experience.");
   });
 
+  it("skips talent-agency postings before calling the agent", async () => {
+    const agencyJob = {
+      ...recentJob,
+      id: "job-agency",
+      title: "Proxify: Senior TypeScript Dev",
+      link: "https://remoteok.com/remote-jobs/remote-senior-ts-dev-proxify-1137475",
+    };
+
+    mockGetUsersWithResume.mockResolvedValue([userWithResume]);
+    mockGetVectorById.mockResolvedValue([0.1, 0.2, 0.3]);
+    mockQuerySimilar.mockResolvedValue([
+      { id: "job-1", score: 0.95 },
+      { id: "job-agency", score: 0.9 },
+    ]);
+    mockGetJobDetailsByIds.mockResolvedValue([recentJob, agencyJob]);
+    mockGetExistingMatchedJobIds.mockResolvedValue([]);
+    mockCallAgent.mockResolvedValue([]);
+
+    await handleMatch(makeEnv(), 0);
+
+    expect(mockCallAgent).toHaveBeenCalledTimes(1);
+    const promptJobs = mockCallAgent.mock.calls[0][3];
+    expect(promptJobs.map((j: { jobId: string }) => j.jobId)).toEqual(["job-1"]);
+  });
+
+  it("does not call the agent when every recent job is an agency posting", async () => {
+    const agencyJob = {
+      ...recentJob,
+      id: "job-agency",
+      title: "Backend Engineer at Upwork",
+    };
+
+    mockGetUsersWithResume.mockResolvedValue([userWithResume]);
+    mockGetVectorById.mockResolvedValue([0.1, 0.2, 0.3]);
+    mockQuerySimilar.mockResolvedValue([{ id: "job-agency", score: 0.9 }]);
+    mockGetJobDetailsByIds.mockResolvedValue([agencyJob]);
+
+    await handleMatch(makeEnv(), 0);
+
+    expect(mockCallAgent).not.toHaveBeenCalled();
+    expect(mockGetExistingMatchedJobIds).not.toHaveBeenCalled();
+  });
+
   it("stores matched jobs via createMatchJobIfNotExist", async () => {
     mockGetUsersWithResume.mockResolvedValue([userWithResume]);
     mockGetVectorById.mockResolvedValue([0.1, 0.2, 0.3]);
