@@ -17,9 +17,10 @@ export async function emailCommandHandler(ctx: BotContext) {
       return void await ctx.reply(C.EMAIL_LOGIN_HINT);
     }
 
-    const msg = user.email
+    let msg = user.email
       ? C.EMAIL_UPDATE_HINT.replace("%s", user.email).replace("%s", user.email)
       : C.EMAIL_PROMPT;
+    if (user.emailOptOut) msg += `\n\n${C.EMAIL_OPTED_OUT_NOTE}`;
     await updateSession(env.SESSION_KV, ctx.chat!.id, { awaitingEmail: true, lastBotMessage: msg });
     await ctx.reply(msg);
   } catch (err) {

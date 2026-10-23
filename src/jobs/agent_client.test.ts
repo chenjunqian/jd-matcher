@@ -30,6 +30,7 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
     LLM_DEEPSEEK_BASEURL: "",
     EMAIL: { send: vi.fn() } as unknown as SendEmail,
     APP_URL: "http://localhost:8787",
+    UNSUBSCRIBE_SECRET: "test-unsub-secret",
     LLM_DEEPSEEK_APIKEY: "test-api-key",
     LLM_DEEPSEEK_MODEL: "test-model",
     LLM_DEEPSEEK_REASONINGEFFORT: "test-effort",

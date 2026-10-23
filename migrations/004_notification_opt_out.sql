@@ -1,0 +1,3 @@
+ALTER TABLE user_info ADD COLUMN email_opt_out INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE user_info ADD COLUMN telegram_opt_out INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE user_info ADD COLUMN opt_out_time TEXT;

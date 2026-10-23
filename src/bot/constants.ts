@@ -2,7 +2,7 @@ export const COMMON_ERROR = "There is something wrong with my service. Please tr
 export const LOGIN_HINT = "Please use /start command to login again.";
 export const START_REPLY = "Hi %s ! I'm a bot that can help you find a job. You can use /jobs to get all available jobs for you. \nYou can use /upload_resume to upload your resume.";
 export const START_ERROR = "Hi %s ! I'm a bot that can help you find a job. Seems like there is something wrong with my service. Please try again later.";
-export const HELP_REPLY = "Use /upload_resume to upload your resume first.\nThen you can use /jobs to get all available jobs for you.";
+export const HELP_REPLY = "Use /upload_resume to upload your resume first.\nThen you can use /jobs to get all available jobs for you.\nUse /expectation to set job expectations.\nUse /email to also get matched jobs by email.\nUse /unsubscribe to manage notification settings.";
 export const RESUME_SUCCESS = "Your resume has been uploaded! We will notify you when we find a job for you. You can also use /jobs to view all available jobs for you.";
 export const RESUME_HINT = "Please upload your resume file.";
 export const RESUME_TYPE_ERR = "Please upload your resume in text or PDF format.";
@@ -18,3 +18,8 @@ export const EMAIL_ALREADY_VERIFIED = "This verification link has already been u
 export const EMAIL_EXPIRED = "This verification link has expired. Please use /email again.";
 export const EMAIL_LOGIN_HINT = "You are not registered. Please use /start first.";
 export const EMAIL_UPDATE_HINT = "Your current email is %s. A verification email will be sent to %s to update it.";
+export const EMAIL_OPTED_OUT_NOTE = "Note: email notifications are currently OFF because you unsubscribed. Verifying an address again turns them back on, or use /unsubscribe to resume.";
+export const UNSUB_CHOOSE_HINT = "Choose what to change:";
+export const UNSUB_DONE =
+  "Done. You will no longer receive %s.\nYour resume and matched jobs are kept, and /jobs still works.\nUse /unsubscribe any time to resume.";
+export const UNSUB_RESUMED = "Done. Notifications resumed.";

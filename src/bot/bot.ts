@@ -1,7 +1,7 @@
 import { Bot, Context } from "grammy";
 import type { Env } from "../lib/types.js";
 import { getSession } from "./session.js";
-import { startCommandHandler, helpCommandHandler, allJobsCommandHandler, allJobsCallbackHandler, jobsCommandHandler, jobsCallbackHandler, uploadResumeCommandHandler, uploadResumeFileHandler, expectationCommandHandler, expectationTextHandler, emailCommandHandler, emailTextHandler } from "./handlers/index.js";
+import { startCommandHandler, helpCommandHandler, allJobsCommandHandler, allJobsCallbackHandler, jobsCommandHandler, jobsCallbackHandler, uploadResumeCommandHandler, uploadResumeFileHandler, expectationCommandHandler, expectationTextHandler, emailCommandHandler, emailTextHandler, unsubscribeCommandHandler, unsubscribeCallbackHandler } from "./handlers/index.js";
 
 export interface BotContext extends Context {
   env: Env;
@@ -18,9 +18,11 @@ export function createBot(token: string, env: Env): Bot<BotContext> {
   bot.command("upload_resume", uploadResumeCommandHandler);
   bot.command("expectation", expectationCommandHandler);
   bot.command("email", emailCommandHandler);
+  bot.command("unsubscribe", unsubscribeCommandHandler);
 
   bot.callbackQuery(/^all_jobs_callback_data_/, allJobsCallbackHandler);
   bot.callbackQuery(/^matched_jobs_callback_data_/, jobsCallbackHandler);
+  bot.callbackQuery(/^unsub:/, unsubscribeCallbackHandler);
   bot.on(":document", uploadResumeFileHandler);
 
   bot.on(":text", async (ctx) => {

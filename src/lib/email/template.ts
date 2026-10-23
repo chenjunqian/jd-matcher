@@ -18,7 +18,7 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-export function buildJobNotificationHtml(jobs: UserMatchedDetailJob[]): string {
+export function buildJobNotificationHtml(jobs: UserMatchedDetailJob[], unsubscribeUrl?: string): string {
   let html = "<h2>New Job Matches</h2><p>You have new matched jobs, please check.</p>";
   for (const j of jobs) {
     html += `<div style="margin-bottom:16px;padding:12px;border:1px solid #ddd;border-radius:8px;">
@@ -31,15 +31,22 @@ export function buildJobNotificationHtml(jobs: UserMatchedDetailJob[]): string {
 <p><a href="${escapeHtml(j.link)}">View Job</a></p>
 </div>`;
   }
-  html += '<hr style="margin-top:24px"><p style="color:#999;font-size:11px">This is an automated message from JD Matcher. Please do not reply to this email.</p>';
+  html += '<hr style="margin-top:24px"><p style="color:#999;font-size:11px">This is an automated message from JD Matcher. Please do not reply to this email.';
+  if (unsubscribeUrl) {
+    html += `<br><a href="${escapeHtml(unsubscribeUrl)}" style="color:#999">Unsubscribe from these emails</a>`;
+  }
+  html += '</p>';
   return html;
 }
 
-export function buildJobNotificationText(jobs: UserMatchedDetailJob[]): string {
+export function buildJobNotificationText(jobs: UserMatchedDetailJob[], unsubscribeUrl?: string): string {
   let msg = "You have new matched jobs, please check.\n\n";
   for (const j of jobs) {
     msg += `Title : ${j.title}\nLink : ${j.link}\nLocation : ${j.location}\nSalary : ${j.salary}\nMatch Score : ${j.matchScore}\nMatch Reason : ${j.matchReason}\nDate : ${(j.updateTime ?? "").split("T")[0]}\n\n`;
   }
   msg += "\n---\nThis is an automated message from JD Matcher. Please do not reply to this email.";
+  if (unsubscribeUrl) {
+    msg += `\nUnsubscribe from these emails: ${unsubscribeUrl}`;
+  }
   return msg;
 }

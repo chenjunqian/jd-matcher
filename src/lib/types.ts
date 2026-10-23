@@ -31,6 +31,9 @@ export interface UserInfo {
   vectorizeId?: string;
   resumeUpdateDate?: string;
   resumeUpdateCount?: number;
+  emailOptOut?: boolean;
+  telegramOptOut?: boolean;
+  optOutTime?: string;
 }
 
 export interface UserMatchedJob {
@@ -83,6 +86,7 @@ export interface Env {
   LLM_DEEPSEEK_REASONINGEFFORT: string;
   EMAIL: SendEmail;
   APP_URL: string;
+  UNSUBSCRIBE_SECRET: string;
 }
 
 export type JobType = "crawl" | "embed" | "match" | "notify";

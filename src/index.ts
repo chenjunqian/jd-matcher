@@ -8,8 +8,9 @@ import { handleCrawl } from "./jobs/crawl.js";
 import { handleEmbed } from "./jobs/embed.js";
 import { handleMatch, matchUser } from "./jobs/match.js";
 import { handleNotify } from "./jobs/notify.js";
-import { getUsersWithResumeCount, getUserInfoById, updateUserEmail } from "./lib/db/user_info.js";
+import { getUsersWithResumeCount, getUserInfoById, updateUserEmail, clearEmailOptOut } from "./lib/db/user_info.js";
 import { getEmailVerificationByToken, markEmailVerified, deleteEmailVerification } from "./lib/db/email_verification.js";
+import { unsubscribeRoutes } from "./routes/unsubscribe.js";
 
 export class MatchContainer extends Container {
   defaultPort = 3000;
@@ -26,6 +27,9 @@ app.post("/telegram/webhook", (c) => {
 
 // ─── Landing page ──────────────────────────────────────────────────────────
 app.get("/", (c) => c.html(landingHtml));
+
+// ─── Unsubscribe (GET = confirm page, POST = RFC 8058 one-click) ────────────
+app.route("/", unsubscribeRoutes);
 
 // ─── Health ────────────────────────────────────────────────────────────────
 app.get("/health", (c) => c.text("OK"));
@@ -48,6 +52,8 @@ app.get("/verify-email", async (c) => {
 
     await markEmailVerified(c.env.DB, token);
     await updateUserEmail(c.env.DB, record.userId, record.email);
+    // Re-verifying an address is fresh consent — lift any previous email opt-out.
+    await clearEmailOptOut(c.env.DB, record.userId);
     await deleteEmailVerification(c.env.DB, token);
 
     if (user.telegramId) {

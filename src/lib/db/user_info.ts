@@ -49,6 +49,46 @@ export async function updateUserJobExpectations(db: D1Database, telegramId: stri
   await db.prepare("UPDATE user_info SET job_expectations=? WHERE telegram_id=?").bind(expectations, telegramId).run();
 }
 
+export type NotifyChannel = "email" | "telegram" | "all";
+
+/**
+ * Flip notification opt-out flags for one or all channels.
+ * Opting out never deletes data: resume, matches and /jobs stay available.
+ */
+export async function setNotifyOptOut(
+  db: D1Database,
+  userId: string,
+  channel: NotifyChannel,
+  optOut: boolean,
+): Promise<void> {
+  const sets: string[] = [];
+  const binds: (string | number)[] = [];
+
+  if (channel === "email" || channel === "all") {
+    sets.push("email_opt_out = ?");
+    binds.push(optOut ? 1 : 0);
+  }
+  if (channel === "telegram" || channel === "all") {
+    sets.push("telegram_opt_out = ?");
+    binds.push(optOut ? 1 : 0);
+  }
+  if (optOut) {
+    sets.push("opt_out_time = ?");
+    binds.push(new Date().toISOString());
+  }
+  if (!sets.length) return;
+
+  await db
+    .prepare(`UPDATE user_info SET ${sets.join(", ")} WHERE id = ?`)
+    .bind(...binds, userId)
+    .run();
+}
+
+/** Re-verifying an email is fresh consent, so drop the email opt-out flag. */
+export async function clearEmailOptOut(db: D1Database, userId: string): Promise<void> {
+  await db.prepare("UPDATE user_info SET email_opt_out = 0 WHERE id = ?").bind(userId).run();
+}
+
 export async function getAllUserInfoCount(db: D1Database): Promise<number> {
   const r = await db.prepare("SELECT COUNT(*) as count FROM user_info").first<{ count: number }>();
   return r?.count ?? 0;
@@ -109,5 +149,8 @@ function mapRow(row: Record<string, unknown>): UserInfo {
     vectorizeId: (row.vectorize_id as string) ?? undefined,
     resumeUpdateDate: (row.resume_update_date as string) ?? undefined,
     resumeUpdateCount: (row.resume_update_count as number) ?? undefined,
+    emailOptOut: (row.email_opt_out as number) === 1,
+    telegramOptOut: (row.telegram_opt_out as number) === 1,
+    optOutTime: (row.opt_out_time as string) ?? undefined,
   };
 }

@@ -1,5 +1,5 @@
 import type { Env, UserMatchedDetailJob } from "../lib/types.js";
-import { getAllUserInfoCount, getUserInfoList } from "../lib/db/user_info.js";
+import { getAllUserInfoCount, getUserInfoList, setNotifyOptOut } from "../lib/db/user_info.js";
 import {
   getUserNonNotifiedJobTotalCount,
   getUserNonNotifiedJobList,
@@ -7,6 +7,7 @@ import {
 } from "../lib/db/user_matched_job.js";
 import { filterAgencyJobs, jobDetailFields } from "../lib/crawler/agency_blocklist.js";
 import { buildJobNotificationHtml, buildJobNotificationText } from "../lib/email/template.js";
+import { buildUnsubscribeUrl } from "../lib/unsubscribe/token.js";
 
 function buildMessage(jobs: UserMatchedDetailJob[]): string {
   let msg = "You have new matched jobs, please check.\n\n";
@@ -27,6 +28,20 @@ async function sendTelegramMessage(token: string, chatId: string, text: string):
   return { ok: body.ok, description: body.description };
 }
 
+/** Telegram errors that mean "this user will never receive chat messages again". */
+const TELEGRAM_OPT_OUT_HINTS = [
+  "bot was blocked by the user",
+  "user is deactivated",
+  "chat not found",
+  "bot was kicked",
+];
+
+function isOptOutError(description?: string): boolean {
+  if (!description) return false;
+  const d = description.toLowerCase();
+  return TELEGRAM_OPT_OUT_HINTS.some((h) => d.includes(h));
+}
+
 export async function sendJobsInChunks(env: Env, telegramId: string, jobs: UserMatchedDetailJob[], userId: string): Promise<void> {
   let pendingJobs = jobs.slice();
   let batchSize = pendingJobs.length;
@@ -41,6 +56,14 @@ export async function sendJobsInChunks(env: Env, telegramId: string, jobs: UserM
       pendingJobs = pendingJobs.slice(batchSize);
       batchSize = pendingJobs.length;
       continue;
+    }
+
+    // The user blocked the bot / deleted the chat: treat as a Telegram opt-out
+    // instead of retrying forever through the queue.
+    if (isOptOutError(resp.description)) {
+      console.log(`[notify] user ${userId} blocked the bot (${resp.description}) → telegram opt-out`);
+      await setNotifyOptOut(env.DB, userId, "telegram", true);
+      return;
     }
 
     if (resp.description?.includes("message is too long")) {
@@ -61,13 +84,26 @@ export async function sendJobsInChunks(env: Env, telegramId: string, jobs: UserM
   }
 }
 
-async function sendEmailNotification(env: Env, email: string, jobs: UserMatchedDetailJob[], userId: string): Promise<void> {
+async function sendEmailNotification(
+  env: Env,
+  email: string,
+  jobs: UserMatchedDetailJob[],
+  userId: string,
+): Promise<void> {
+  const unsubUrl = await buildUnsubscribeUrl(env.APP_URL, env.UNSUBSCRIBE_SECRET, userId, "email");
   await env.EMAIL.send({
     to: email,
     from: { email: "jdmatcher@guoshaotech.com", name: "JD Matcher" },
     subject: "New Job Matches for You",
-    html: buildJobNotificationHtml(jobs),
-    text: buildJobNotificationText(jobs),
+    html: buildJobNotificationHtml(jobs, unsubUrl),
+    text: buildJobNotificationText(jobs, unsubUrl),
+    // Gmail/Yahoo bulk-sender requirements (RFC 2369 + RFC 8058): without these
+    // the built-in "Unsubscribe" button is missing and deliverability suffers.
+    headers: {
+      "List-Unsubscribe": `<${unsubUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "Auto-Submitted": "auto-generated",
+    },
   });
   await updateMatchJobsNotifiedByIds(env.DB, userId, jobs.map(j => j.id));
 }
@@ -106,13 +142,25 @@ export async function handleNotify(env: Env): Promise<void> {
           }
           if (!jobs.length) continue;
 
-          if (u.telegramId) {
-            await sendJobsInChunks(env, u.telegramId, jobs, u.id);
+          const canTelegram = !!u.telegramId && !u.telegramOptOut;
+          const canEmail = !!u.email && !u.emailOptOut;
+
+          // Fully opted out: retire the rows instead of re-scanning them every run.
+          if (!canTelegram && !canEmail) {
+            console.log(`[notify] user ${u.id} has opted out of all channels — skipped`);
+            await updateMatchJobsNotifiedByIds(env.DB, u.id, jobs.map((j) => j.id));
+            continue;
           }
-          if (u.email) {
-            await sendEmailNotification(env, u.email, jobs, u.id);
+
+          if (canTelegram) {
+            await sendJobsInChunks(env, u.telegramId!, jobs, u.id);
           }
-          console.log(`[notify] notified user ${u.id} (tg:${u.telegramId ?? "none"} email:${u.email ?? "none"})`);
+          if (canEmail) {
+            await sendEmailNotification(env, u.email!, jobs, u.id);
+          }
+          console.log(
+            `[notify] notified user ${u.id} (tg:${canTelegram ? u.telegramId : "off"} email:${canEmail ? u.email : "off"})`,
+          );
         } catch (e) { console.error(`[notify] failed for user ${u.id}:`, e); }
       }
     }

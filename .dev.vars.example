@@ -14,3 +14,7 @@ LLM_DEEPSEEK_APIKEY=
 # LLM_DEEPSEEK_BASEURL=https://api.deepseek.com/v1
 # LLM_DEEPSEEK_MODEL=deepseek-v4-flash
 # LLM_DEEPSEEK_REASONINGEFFORT=high
+
+# HMAC secret for unsubscribe links (any long random string, e.g. `openssl rand -hex 32`).
+# Never reuse TELEGRAM_BOT_TOKEN. Rotating it only invalidates links in already-sent emails.
+UNSUBSCRIBE_SECRET=

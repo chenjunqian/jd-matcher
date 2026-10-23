@@ -61,6 +61,7 @@ function makeEnv(): Env {
     LLM_DEEPSEEK_REASONINGEFFORT: "",
     EMAIL: { send: vi.fn() } as unknown as SendEmail,
     APP_URL: "http://localhost:8787",
+    UNSUBSCRIBE_SECRET: "test-unsub-secret",
   };
 }
 

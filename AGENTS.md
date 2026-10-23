@@ -31,6 +31,8 @@
 ├── wrangler.toml              # Config: D1, KV, Vectorize, Queue, Cron, observability
 ├── src/
 │   ├── index.ts               # Entry: Hono routes + scheduled() + queue()
+│   ├── routes/
+│   │   └── unsubscribe.ts     # GET confirm page + POST (manual & RFC 8058 one-click)
 │   ├── lib/
 │   │   ├── types.ts           # All type definitions + Env bindings
 │   │   ├── config.ts          # Config helper reading env bindings
@@ -52,7 +54,9 @@
 │   │   │   ├── workingnomads.ts # Working Nomads API scraper (all categories)
 │   │   │   └── nodesk.ts      # NoDesk RSS scraper (all categories)
 │   │   ├── email/
-│   │   │   └── template.ts    # Email HTML/text templates
+│   │   │   └── template.ts    # Email HTML/text templates (+ unsubscribe footer)
+│   │   ├── unsubscribe/
+│   │   │   └── token.ts       # HMAC-signed unsubscribe tokens (stateless)
 │   │   └── vectorize/
 │   │       ├── index.ts       # Vectorize upsert/query helpers
 │   │       └── mock.ts        # Mock Vectorize for testing
@@ -63,16 +67,19 @@
 │   │   ├── bot.ts             # grammY setup + env middleware + command registration
 │   │   ├── session.ts         # KV-backed chat session (10min TTL)
 │   │   ├── constants.ts       # All Telegram reply texts
-│   │   └── handlers/          # start, help, all_jobs, jobs, upload_resume, expectation
+│   │   └── handlers/          # start, help, all_jobs, jobs, upload_resume, expectation, email, unsubscribe
 │   └── jobs/
 │       ├── crawl.ts           # Fetch jobs (agency postings filtered out) from RemoteOK, WWR, Remotive, Jobspresso, Working Nomads, NoDesk
 │       ├── embed.ts           # Generate embeddings → store in Vectorize
 │       ├── match.ts           # Vector search → agency filter → AI agent (Vercel AI SDK) → store matches
 │       ├── match.test.ts
-│       ├── notify.ts          # Unnotified matches → Telegram API
+│       ├── notify.ts          # Unnotified matches → Telegram + email (opt-out aware)
 │       └── notify.test.ts
 └── migrations/
-    └── 001_initial.sql        # D1 schema
+    ├── 001_initial.sql        # D1 schema
+    ├── 002_email_verification.sql
+    ├── 003_resume_update_limit.sql
+    └── 004_notification_opt_out.sql
 ```
 
 ## Flow
@@ -89,11 +96,22 @@ Email verification:
   /email ──▶  prompt for address ──▶  create token in email_verification table
   ──▶  send verification email via Cloudflare Email Service
   ──▶  user clicks link ──▶  GET /verify-email?token=... ──▶  mark verified + update user_info.email
+  ──▶  clearEmailOptOut (re-verifying an address = fresh consent)
+
+Unsubscribe (per channel: email / telegram / all):
+  email footer + List-Unsubscribe headers ──▶  GET /unsubscribe?token=…
+    ──▶  400 (bad/expired token) | "already unsubscribed" | confirm form (NO writes)
+  ──▶  POST /unsubscribe?token=…  ──▶  set user_info.email_opt_out / telegram_opt_out
+  Gmail/Yahoo one-click POST (body `List-Unsubscribe=One-Click`) ──▶  same handler, 2xx
+  Telegram ──▶  /unsubscribe (inline keyboard) ──▶  same flags
+  Blocked bot ("bot was blocked by the user") ──▶  auto telegram opt-out in notify
 
 Email notification (in notify.ts):
-  handleNotify ──▶  for each user with non-notified matches:
-    ──▶  send Telegram message (if telegramId exists)
-    ──▶  send email notification (if email is set)
+  handleNotify ──▶  for each user with non-notified matches, skipping opted-out channels:
+    ──▶  send Telegram message (if telegramId exists and telegram not opted out)
+    ──▶  send email notification with unsubscribe footer + List-Unsubscribe headers
+         (if email is set and email not opted out)
+    ──▶  fully opted out users: rows are marked notified so they are not re-scanned
 
 MatchContainer (Cloudflare Containers):
   Container class with HTTP server  ──▶  POST /match  ──▶  runMatchAgent  ──▶  results JSON
@@ -131,6 +149,7 @@ keep the list in sync with the skill.
 | `/upload_resume` | Upload your resume (text file) |
 | `/expectation` | Set job expectations |
 | `/email` | Set email address and verify for notifications |
+| `/unsubscribe` | Stop / resume email and Telegram notifications |
 
 ## Deployment
 
@@ -162,10 +181,16 @@ npx wrangler secret put LLM_DEEPSEEK_APIKEY
 # 8. Run email verification migration
 npx wrangler d1 execute jd-matcher-db --file migrations/002_email_verification.sql
 
-# 9. Deploy
+# 9. Run notification opt-out migration
+npx wrangler d1 execute jd-matcher-db --file migrations/004_notification_opt_out.sql
+
+# 10. Signing secret for unsubscribe links (do NOT reuse the bot token)
+npx wrangler secret put UNSUBSCRIBE_SECRET
+
+# 11. Deploy
 npx wrangler deploy
 
-# 10. Set Telegram webhook
+# 12. Set Telegram webhook
 curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://jd-matcher.<subdomain>.workers.dev/telegram/webhook"
 ```
 

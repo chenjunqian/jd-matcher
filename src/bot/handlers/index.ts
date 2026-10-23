@@ -5,3 +5,4 @@ export { jobsCommandHandler, jobsCallbackHandler } from "./jobs.js";
 export { uploadResumeCommandHandler, uploadResumeFileHandler } from "./upload_resume.js";
 export { expectationCommandHandler, expectationTextHandler } from "./expectation.js";
 export { emailCommandHandler, emailTextHandler } from "./email.js";
+export { unsubscribeCommandHandler, unsubscribeCallbackHandler } from "./unsubscribe.js";
