@@ -20,7 +20,8 @@
     font-weight: 400;
   }
   .desc { margin-top: 20px; font-size: 15px; color: #444; }
-  .btn-wrap { margin-top: 28px; }
+  a { color: #111; }
+  .btn-wrap { margin-top: 20px; }
   .btn {
     display: inline-flex; align-items: center; justify-content: center;
     height: 52px; padding: 0 32px;
@@ -32,6 +33,44 @@
   .btn:active { background: #000; }
   section { margin-top: 48px; }
   section h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 16px; }
+  .lead { font-size: 15px; color: #333; }
+  .lead strong { color: #111; }
+  /* Primary: local agent skill */
+  .primary {
+    margin-top: 40px; padding: 24px 22px;
+    border: 1px solid #e6e6e6; border-radius: 14px; background: #fafafa;
+  }
+  .primary h2 { margin-bottom: 12px; }
+  .tag {
+    display: inline-block; margin-left: 6px; padding: 2px 8px;
+    font-size: 10px; letter-spacing: 0.06em; font-weight: 700;
+    color: #fff; background: #111; border-radius: 999px; vertical-align: middle;
+  }
+  .facts { list-style: none; margin-top: 14px; }
+  .facts li {
+    position: relative; padding-left: 16px;
+    font-size: 14px; color: #444; line-height: 1.5;
+  }
+  .facts li + li { margin-top: 6px; }
+  .facts li::before { content: "—"; position: absolute; left: 0; color: #bbb; }
+  .install {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 18px; padding: 13px 15px;
+    background: #111; border-radius: 8px;
+    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
+    font-size: 13px; color: #f5f5f5;
+  }
+  .install .prompt { color: #777; }
+  .install .flag { white-space: nowrap; }
+  .install code {
+    background: none; padding: 0; color: inherit; font-size: inherit;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .hint { margin-top: 12px; font-size: 12px; color: #888; }
+  .hint a, .link-row a { color: #555; text-decoration: none; border-bottom: 1px solid #ddd; }
+  .hint a:hover, .link-row a:hover { color: #111; border-color: #111; }
+  .link-row { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 14px; font-size: 13px; }
+  /* Secondary: Telegram */
   .steps { list-style: none; }
   .steps li {
     display: flex; gap: 14px; align-items: flex-start;
@@ -46,7 +85,7 @@
   }
   .step-text { font-size: 15px; color: #333; padding-top: 3px; }
   .step-text strong { color: #111; }
-  .commands { display: flex; flex-wrap: wrap; gap: 8px; }
+  .commands { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
   .commands code {
     font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
     font-size: 13px; background: #f5f5f5; padding: 6px 12px;
@@ -54,6 +93,8 @@
   }
   hr { margin-top: 48px; border: none; border-top: 1px solid #eee; }
   footer { margin-top: 16px; font-size: 12px; color: #aaa; }
+  footer a { color: #aaa; text-decoration: none; }
+  footer a:hover { color: #111; }
 </style>
 </head>
 <body>
@@ -61,44 +102,56 @@
   <h1>JD Matcher</h1>
   <p class="subtitle">AI-Powered Job Matching</p>
   <p class="desc">
-    Upload your resume, set expectations, and get matched with remote jobs from across the web — all inside Telegram.
+    Match your resume against fresh remote job postings — run it locally as an AI agent skill, or let the Telegram bot do it for you.
   </p>
-  <div class="btn-wrap">
-    <a class="btn" href="https://t.me/JDMatcherBot" id="tgBtn">Open in Telegram</a>
-  </div>
 
-  <section>
-    <h2>How it works</h2>
-    <ol class="steps">
-      <li>
-        <span class="step-num">1</span>
-        <span class="step-text">Start the bot on <strong>Telegram</strong></span>
-      </li>
-      <li>
-        <span class="step-num">2</span>
-        <span class="step-text"><strong>Upload</strong> your resume and set expectations</span>
-      </li>
-      <li>
-        <span class="step-num">3</span>
-        <span class="step-text">Get <strong>matched</strong> and notified automatically</span>
-      </li>
-    </ol>
+  <!-- Primary path: local agent skill -->
+  <section class="primary">
+    <h2>Local Agent Skill <span class="tag">Recommended</span></h2>
+    <p class="lead">
+      A self-contained skill for <strong>Claude Code, Codex, Cursor, Gemini CLI, pi</strong> and other agents.
+      It crawls remote jobs into a local Markdown knowledge base, matches them against your resume, and
+      renders an interactive HTML dashboard.
+    </p>
+    <ul class="facts">
+      <li>Local-first: no account, no database, your resume never leaves your machine</li>
+      <li>Only postings from the last 2 months that you have not seen before</li>
+      <li>Filtered against talent-agency and freelance-marketplace listings</li>
+    </ul>
+    <div class="install">
+      <code><span class="prompt">$</span> bash scripts/install-skill.sh <span class="flag">--scope global</span></code>
+    </div>
+    <p class="hint">
+      Requires Node 22.6+ or Bun, and a clone of the repo:
+      <a href="https://github.com/chenjunqian/jd-matcher">github.com/chenjunqian/jd-matcher</a>
+    </p>
+    <div class="link-row">
+      <a href="https://github.com/chenjunqian/jd-matcher/blob/main/skills/jd-matcher-skill/SKILL.md">Skill documentation →</a>
+      <a href="https://github.com/chenjunqian/jd-matcher/blob/main/README.md#1-installation">Setup guide →</a>
+    </div>
   </section>
 
+  <!-- Secondary path: Telegram bot -->
   <section>
-    <h2>Bot Commands</h2>
+    <h2>Or use the Telegram bot</h2>
+    <p class="lead">Zero setup: start the bot, upload your resume once, and get matched jobs pushed to Telegram or email.</p>
+    <div class="btn-wrap">
+      <a class="btn" href="https://t.me/JDMatcherBot" id="tgBtn">Open in Telegram</a>
+    </div>
     <div class="commands">
       <code>/start</code>
       <code>/upload_resume</code>
       <code>/jobs</code>
       <code>/expectation</code>
       <code>/email</code>
-      <code>/help</code>
+      <code>/unsubscribe</code>
     </div>
   </section>
 
   <hr>
-  <footer>JD Matcher &copy; 2026</footer>
+  <footer>
+    <a href="https://github.com/chenjunqian/jd-matcher">GitHub</a> · JD Matcher &copy; 2026
+  </footer>
 </div>
 
 <script>
