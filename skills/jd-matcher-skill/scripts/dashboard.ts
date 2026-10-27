@@ -658,804 +658,1811 @@ export function generateDashboardHtml(
   <title>JD Matcher</title>
   <style>
     /* ==========================================================================
-       Kami Design System Tokens
-       Warm Parchment, Single Ink-Blue Accent, Editorial Serif Typography
+       Frosted Workbench
+       Warm neutral canvas · lime / apricot / ink accent cards · frosted glass
        ========================================================================== */
     :root {
-      --parchment:      #f5f4ed;   /* Page background - warm cream canvas */
-      --ivory:          #faf9f5;   /* Quiet filled container */
-      --inline-code-bg: #f0eee6;   /* Annotation surface */
-      --warm-sand:      #e8e6dc;   /* Interactive / button surface */
-      --line:           #d8d5c8;
+      --canvas:        #EFEDE9;
+      --canvas-deep:   #E3E0DA;
 
-      --brand:          #1B365D;   /* Ink Blue - the single chromatic accent */
-      --brand-light:    #2D5A8A;   /* Ink Light */
-      --brand-tint:     #EEF2F7;   /* Lightest fill */
-      --tag-bg:         #E4ECF5;   /* Solid tag swatch */
+      --glass:         rgba(255, 255, 255, 0.58);
+      --glass-strong:  rgba(255, 255, 255, 0.78);
+      --glass-border:  rgba(255, 255, 255, 0.85);
+      --glass-line:    rgba(20, 20, 19, 0.075);
+      --panel:         rgba(250, 249, 245, 0.74);
 
-      --near-black:     #141413;   /* Primary text - warm olive undertone */
-      --dark-warm:      #3d3d3a;   /* Secondary text */
-      --olive:          #504e49;   /* Subtext */
-      --stone:          #6b6a64;   /* Tertiary text, dates */
+      --ink:           #0D0D0D;
+      --ink-2:         #1B1B1E;
+      --ink-3:         #2A2A2E;
 
-      --border:         #e8e6dc;   /* Primary border */
-      --border-soft:    #e5e3d8;   /* Subtle divider */
+      --lime:          #F2EA2E;
+      --lime-soft:     #F7F264;
+      --lime-deep:     #DFD816;
+      --apricot:       #FE9251;
+      --apricot-deep:  #F5762F;
+      --blue:          #1E82C2;
 
-      --breaking-bg:    #f0e0d8;   /* Muted warm peach */
-      --breaking-fg:    #8b4513;   /* Warm brown */
+      --text:          #1A1A18;
+      --text-2:        #5F5E58;
+      --text-3:        #8B8A83;
 
-      --serif: Charter, "Bitstream Charter", "TsangerJinKai02", "Source Han Serif SC",
-               "Source Han Serif CN", "Noto Serif", Georgia, serif;
-      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      --mono: "JetBrains Mono", "SF Mono", Consolas, Menlo, monospace;
+      --r-xl: 28px;
+      --r-lg: 22px;
+      --r-md: 16px;
+      --r-sm: 12px;
+      --r-pill: 999px;
+
+      --shadow-card: 0 22px 60px -38px rgba(24, 22, 18, 0.55), 0 2px 8px rgba(24, 22, 18, 0.03);
+      --shadow-float: 0 16px 40px -22px rgba(24, 22, 18, 0.45);
+
+      --sans: "Inter", "Helvetica Neue", Helvetica, -apple-system, BlinkMacSystemFont,
+              "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+      --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+      /* legacy aliases kept for inline styles used by render helpers */
+      --parchment: var(--canvas);
+      --ivory: var(--glass);
+      --near-black: var(--text);
+      --dark-warm: var(--text-2);
+      --olive: var(--text-2);
+      --stone: var(--text-3);
+      --brand: var(--text-2);
+      --brand-light: var(--text);
+      --border: var(--glass-line);
+      --border-soft: var(--glass-line);
+      --warm-sand: rgba(20, 20, 19, 0.055);
+      --tag-bg: rgba(20, 20, 19, 0.055);
     }
 
     [data-theme="dark"] {
-      --parchment:      #141413;   /* Deep warm charcoal */
-      --ivory:          #1c1c1a;   /* Quiet dark card */
-      --inline-code-bg: #242422;
-      --warm-sand:      #2c2c29;
-      --line:           #383834;
+      --canvas:        #0E0E10;
+      --canvas-deep:   #16161A;
 
-      --brand:          #396fa8;
-      --brand-light:    #5286bf;
-      --brand-tint:     #1d2a38;
-      --tag-bg:         #1d2d40;
+      --glass:         rgba(255, 255, 255, 0.055);
+      --glass-strong:  rgba(255, 255, 255, 0.1);
+      --glass-border:  rgba(255, 255, 255, 0.12);
+      --glass-line:    rgba(255, 255, 255, 0.09);
+      --panel:         rgba(24, 24, 27, 0.82);
 
-      --near-black:     #f5f4ed;
-      --dark-warm:      #e2dfd5;
-      --olive:          #a8a69d;
-      --stone:          #85837a;
+      --ink:           #17171A;
+      --ink-2:         #1F1F23;
+      --ink-3:         #2C2C31;
 
-      --border:         #33322e;
-      --border-soft:    #2a2926;
+      --text:          #F2F1EC;
+      --text-2:        #B4B2AA;
+      --text-3:        #83817A;
 
-      --breaking-bg:    #3a241b;
-      --breaking-fg:    #e08c62;
+      --shadow-card: 0 22px 60px -34px rgba(0, 0, 0, 0.9), 0 2px 8px rgba(0, 0, 0, 0.4);
+      --shadow-float: 0 16px 40px -22px rgba(0, 0, 0, 0.85);
+
+      --warm-sand: rgba(255, 255, 255, 0.09);
+      --tag-bg: rgba(255, 255, 255, 0.09);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      background: var(--parchment);
-      color: var(--near-black);
-      font-family: var(--serif);
-      font-size: 15px;
-      line-height: 1.55;
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--canvas);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: -0.006em;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      transition: background 0.2s ease, color 0.2s ease;
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
-    a {
-      color: var(--brand);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-    a:hover { color: var(--brand-light); }
+    ::selection { background: rgba(242, 234, 46, 0.6); color: #111; }
 
-    /* Layout */
-    .page-container {
-      max-width: 1140px;
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; color: inherit; }
+
+    :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+
+    /* ---------- Ambient gradient wash + film grain ---------- */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: -25vmax;
+      z-index: -2;
+      pointer-events: none;
+      background:
+        radial-gradient(40vmax 36vmax at 10% 2%, rgba(226, 240, 64, 0.55), transparent 62%),
+        radial-gradient(36vmax 32vmax at 88% 0%, rgba(255, 146, 81, 0.4), transparent 64%),
+        radial-gradient(44vmax 38vmax at 82% 92%, rgba(150, 165, 255, 0.16), transparent 66%),
+        radial-gradient(30vmax 26vmax at 26% 98%, rgba(255, 255, 255, 0.85), transparent 70%);
+      filter: blur(14px);
+      animation: drift 52s var(--ease) infinite alternate;
+    }
+    [data-theme="dark"] body::before {
+      background:
+        radial-gradient(40vmax 36vmax at 10% 2%, rgba(214, 226, 60, 0.14), transparent 62%),
+        radial-gradient(36vmax 32vmax at 88% 0%, rgba(255, 146, 81, 0.16), transparent 64%),
+        radial-gradient(44vmax 38vmax at 82% 92%, rgba(110, 130, 255, 0.12), transparent 66%);
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0.035;
+      mix-blend-mode: multiply;
+      background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+    }
+    [data-theme="dark"] body::after { opacity: 0.05; mix-blend-mode: screen; }
+
+    @keyframes drift {
+      0%   { transform: translate3d(0, 0, 0) scale(1); }
+      100% { transform: translate3d(2%, -1.6%, 0) scale(1.06); }
+    }
+
+    /* ---------- App shell ---------- */
+    .app {
+      display: flex;
+      align-items: flex-start;
+      gap: 26px;
+      max-width: 1360px;
       margin: 0 auto;
-      padding: 48px 24px 80px;
+      padding: 26px 30px 72px;
     }
+    .page-container { flex: 1 1 auto; min-width: 0; }
 
-    /* Header */
-    header {
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 24px;
-      margin-bottom: 32px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-    .header-main {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .logo-badge {
-      width: 46px;
-      height: 46px;
-      border-radius: 10px;
-      background: var(--brand);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid var(--brand-light);
-      box-shadow: 0 2px 8px rgba(27, 54, 93, 0.18);
-      flex-shrink: 0;
-      transition: transform 0.15s ease, background 0.2s ease;
-    }
-    .logo-badge:hover {
-      transform: scale(1.03);
-    }
-    .title-group {
+    /* ---------- Icon rail (tab navigation) ---------- */
+    .rail {
+      position: sticky;
+      top: 26px;
+      flex: 0 0 auto;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      gap: 6px;
+      padding: 10px;
+      border-radius: 24px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(22px) saturate(160%);
+      -webkit-backdrop-filter: blur(22px) saturate(160%);
+      box-shadow: var(--shadow-card);
+      z-index: 60;
     }
+    .rail-mark {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border-radius: 17px;
+      background: var(--ink);
+      color: #F7F6F0;
+      margin-bottom: 4px;
+    }
+    .rail-sep {
+      height: 1px;
+      margin: 4px 8px;
+      background: var(--glass-line);
+    }
+
+    .tab-btn {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 17px;
+      background: transparent;
+      color: var(--text-3);
+      cursor: pointer;
+      transition: background 0.2s var(--ease), color 0.2s var(--ease),
+                  box-shadow 0.25s var(--ease), transform 0.2s var(--ease);
+    }
+    .tab-btn svg { width: 21px; height: 21px; display: block; }
+    .tab-btn:hover { background: var(--glass-strong); color: var(--text); }
+    .tab-btn:active { transform: scale(0.97); }
+    .tab-btn.active {
+      background: #FFFFFF;
+      color: #101010;
+      box-shadow: 0 12px 26px -14px rgba(20, 20, 20, 0.55);
+    }
+    [data-theme="dark"] .tab-btn.active { background: #F2F1EC; color: #101010; }
+    .tab-btn.active::before {
+      content: "";
+      position: absolute;
+      left: -10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 22px;
+      border-radius: 3px;
+      background: var(--lime);
+    }
+
+    .tab-label {
+      position: absolute;
+      left: calc(100% + 14px);
+      white-space: nowrap;
+      padding: 6px 11px;
+      border-radius: 10px;
+      background: var(--ink);
+      color: #F7F6F0;
+      font-size: 11.5px;
+      letter-spacing: 0;
+      opacity: 0;
+      transform: translateX(-5px);
+      pointer-events: none;
+      transition: opacity 0.18s var(--ease), transform 0.18s var(--ease);
+      z-index: 5;
+    }
+    [data-theme="dark"] .tab-label { background: #F2F1EC; color: #111; }
+    .tab-btn:hover .tab-label { opacity: 1; transform: translateX(0); }
+
+    .tab-badge {
+      position: absolute;
+      top: -1px;
+      right: -1px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--r-pill);
+      background: rgba(13, 13, 13, 0.78);
+      color: #F7F6F0;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0;
+      font-variant-numeric: tabular-nums;
+      box-shadow: 0 2px 6px rgba(20, 20, 20, 0.18);
+    }
+    [data-theme="dark"] .tab-badge { background: rgba(255, 255, 255, 0.2); }
+    .tab-btn.active .tab-badge { background: var(--lime); color: #14140F; }
+
+    /* ---------- Header ---------- */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 22px;
+      flex-wrap: wrap;
+      margin-bottom: 26px;
+    }
+    .header-main { display: flex; align-items: flex-start; gap: 16px; }
     .title-group h1 {
-      font-size: 26px;
+      font-size: clamp(34px, 4.6vw, 47px);
       font-weight: 500;
-      color: var(--near-black);
-      letter-spacing: -0.3px;
-      line-height: 1.15;
-      margin: 0;
+      letter-spacing: -0.045em;
+      line-height: 1;
+      color: var(--text);
     }
     .subtitle {
-      font-family: var(--sans);
-      font-size: 13px;
-      color: var(--stone);
-      margin-top: 3px;
-      margin-bottom: 0;
+      margin-top: 11px;
+      font-size: 12.5px;
+      color: var(--text-2);
+      letter-spacing: 0;
+      max-width: 58ch;
     }
-    .header-actions {
+    .header-actions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+
+    .pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      height: 42px;
+      padding: 0 17px;
+      border-radius: var(--r-pill);
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      color: var(--text-2);
+      font-size: 12.5px;
+      letter-spacing: 0;
+      cursor: pointer;
+      box-shadow: 0 10px 26px -24px rgba(20, 20, 20, 0.7);
+      transition: background 0.2s var(--ease), color 0.2s var(--ease),
+                  transform 0.2s var(--ease);
+    }
+    .pill-btn:hover { background: var(--glass-strong); color: var(--text); transform: translateY(-1px); }
+    .date-pill { cursor: default; font-variant-numeric: tabular-nums; }
+    .date-pill:hover { transform: none; background: var(--glass); color: var(--text-2); }
+    .theme-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: linear-gradient(140deg, var(--lime), var(--apricot));
+      box-shadow: 0 0 0 3px rgba(242, 234, 46, 0.18);
+    }
+
+    /* ---------- Bento accent cards ---------- */
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .col-3  { grid-column: span 3; }
+    .col-4  { grid-column: span 4; }
+    .col-6  { grid-column: span 6; }
+    .col-8  { grid-column: span 8; }
+    .col-12 { grid-column: span 12; }
+
+    .bento-card {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 22px;
+      min-height: 206px;
+      border-radius: var(--r-xl);
+      border: 1px solid transparent;
+      box-shadow: var(--shadow-card);
+    }
+    .bento-glass {
+      background: var(--glass);
+      border-color: var(--glass-border);
+      backdrop-filter: blur(22px) saturate(160%);
+      -webkit-backdrop-filter: blur(22px) saturate(160%);
+    }
+    .bento-lime {
+      background: linear-gradient(150deg, #F8F370 0%, #F0E92F 46%, #DED714 100%);
+      color: #17170F;
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+    .bento-apricot {
+      background: linear-gradient(152deg, #FFB080 0%, #FE9251 46%, #F4711F 100%);
+      color: #2B1405;
+      border-color: rgba(255, 255, 255, 0.38);
+    }
+    .bento-ink {
+      background: #0C0C0D;
+      color: #F5F4EE;
+      border-color: rgba(255, 255, 255, 0.09);
+    }
+
+    [data-theme="dark"] .bento-ink {
+      background: linear-gradient(158deg, #202024 0%, #131316 60%, #0C0C0E 100%);
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .bento-head {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-family: var(--sans);
-      font-size: 12px;
+      justify-content: space-between;
+      gap: 10px;
+      position: relative;
+      z-index: 2;
     }
-    .date-pill {
-      background: var(--ivory);
-      border: 1px solid var(--border);
-      padding: 6px 14px;
-      border-radius: 999px;
-      color: var(--olive);
-      font-variant-numeric: tabular-nums;
-    }
-    .theme-toggle-btn {
-      background: var(--ivory);
-      border: 1px solid var(--border);
-      padding: 6px 12px;
-      border-radius: 999px;
-      color: var(--dark-warm);
-      cursor: pointer;
-      font-size: 12px;
-      font-family: var(--sans);
-      transition: background 0.15s;
-    }
-    .theme-toggle-btn:hover { background: var(--warm-sand); }
-
-    /* KPI Metrics */
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 32px;
-    }
-    .metric-card {
-      background: var(--ivory);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 18px 20px;
-    }
-    .metric-label {
-      font-family: var(--sans);
+    .bento-label {
       font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--stone);
-      margin-bottom: 6px;
-    }
-    .metric-value {
-      font-size: 28px;
       font-weight: 500;
-      color: var(--near-black);
-      line-height: 1.1;
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      opacity: 0.68;
+    }
+    .bento-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: var(--r-pill);
+      background: rgba(255, 255, 255, 0.42);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .bento-ink .bento-chip {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.14);
+      color: rgba(245, 244, 238, 0.78);
+    }
+
+    .metric-value {
+      position: relative;
+      z-index: 2;
+      font-size: clamp(48px, 5.4vw, 66px);
+      font-weight: 500;
+      line-height: 0.92;
+      letter-spacing: -0.055em;
       font-variant-numeric: tabular-nums;
+      margin-top: 2px;
     }
     .metric-note {
-      font-family: var(--sans);
-      font-size: 11px;
-      color: var(--olive);
-      margin-top: 6px;
+      position: relative;
+      z-index: 2;
+      font-size: 11.5px;
+      letter-spacing: 0;
+      opacity: 0.62;
+      margin-top: auto;
     }
 
-    /* Tabs Navigation */
-    .tabs-bar {
+    .bento-split {
+      position: relative;
+      z-index: 2;
       display: flex;
-      gap: 10px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 24px;
-      padding-bottom: 1px;
+      gap: 26px;
+      margin-top: 6px;
     }
-    .tab-btn {
-      background: transparent;
-      border: none;
-      border-bottom: 2px solid transparent;
-      padding: 10px 16px;
-      font-family: var(--sans);
-      font-size: 13.5px;
+    .mini-stat { display: flex; flex-direction: column; gap: 2px; }
+    .mini-stat b {
+      font-size: 19px;
       font-weight: 500;
-      color: var(--stone);
-      cursor: pointer;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+    .mini-stat em {
+      font-size: 10.5px;
+      font-style: normal;
+      letter-spacing: 0.02em;
+      opacity: 0.6;
+    }
+
+    .legend {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 4px;
+    }
+    .legend-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      transition: color 0.15s, border-color 0.15s;
+      font-size: 12px;
+      letter-spacing: 0;
+      opacity: 0.9;
     }
-    .tab-btn:hover {
-      color: var(--dark-warm);
-    }
-    .tab-btn.active {
-      color: var(--brand);
-      border-bottom-color: var(--brand);
+    .legend-row b {
+      margin-left: auto;
       font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
     }
-    .tab-badge {
-      background: var(--warm-sand);
-      color: var(--dark-warm);
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+      background: rgba(20, 12, 4, 0.55);
+    }
+    .dot-line {
+      background: transparent;
+      border: 1.5px solid rgba(20, 12, 4, 0.5);
+    }
+    .dot-lime { background: var(--lime); }
+    .dot-apricot { background: var(--apricot); }
+
+    .ink-pill {
+      position: relative;
+      z-index: 2;
+      align-self: flex-start;
+      margin-top: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: var(--r-pill);
+      background: #0C0C0D;
+      color: #F7F6F0;
       font-size: 11px;
-      padding: 2px 7px;
-      border-radius: 999px;
+      letter-spacing: 0.01em;
+    }
+
+    /* decorative textures */
+    .bento-deco {
+      position: absolute;
+      right: -6%;
+      bottom: -12%;
+      width: 54%;
+      height: 68%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .bento-lime .bento-deco {
+      background-image: radial-gradient(circle at center, rgba(20, 18, 6, 0.42) 1.1px, transparent 1.2px);
+      background-size: 9px 9px;
+      -webkit-mask-image: linear-gradient(205deg, #000 6%, transparent 76%);
+      mask-image: linear-gradient(205deg, #000 6%, transparent 76%);
+    }
+    .bento-lime .bento-deco::after {
+      content: "";
+      position: absolute;
+      inset: 44% 0 0 34%;
+      background-image: repeating-linear-gradient(45deg, rgba(20, 18, 6, 0.3) 0 1.5px, transparent 1.5px 7px);
+      -webkit-mask-image: linear-gradient(200deg, #000, transparent 80%);
+      mask-image: linear-gradient(200deg, #000, transparent 80%);
+    }
+    .bento-apricot .bento-deco {
+      width: 62%;
+      height: 82%;
+      background-image: repeating-radial-gradient(circle at 108% 108%,
+        rgba(40, 14, 0, 0.16) 0 2px, transparent 2px 13px);
+    }
+    .bento-ink .bento-deco {
+      background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.13) 1px, transparent 1.1px);
+      background-size: 12px 12px;
+      -webkit-mask-image: linear-gradient(205deg, #000 4%, transparent 72%);
+      mask-image: linear-gradient(205deg, #000 4%, transparent 72%);
+    }
+
+    /* ---------- Spotlight (top pick) ---------- */
+    .spotlight-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: relative;
+      z-index: 2;
+    }
+    .circle-btn {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #F5F4EE;
+      transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+    }
+    .circle-btn:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+    .spotlight-body {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .spotlight-meta { display: flex; flex-direction: column; min-width: 0; }
+    .spotlight-score {
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      font-size: 50px;
+      font-weight: 500;
+      line-height: 0.95;
+      letter-spacing: -0.05em;
       font-variant-numeric: tabular-nums;
     }
-    .tab-btn.active .tab-badge {
-      background: var(--tag-bg);
-      color: var(--brand);
+    .spotlight-score span { font-size: 13px; font-weight: 400; letter-spacing: 0; opacity: 0.45; }
+    .spotlight-company {
+      margin-top: 8px;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: rgba(245, 244, 238, 0.55);
     }
-
-    /* Filter Toolbar */
-    .filter-toolbar {
-      background: var(--ivory);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 18px;
-      margin-bottom: 28px;
+    .spotlight-title {
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.32;
+      letter-spacing: -0.02em;
+      color: #F7F6F0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .spotlight-title:hover { color: var(--lime); }
+    .spotlight-foot {
+      position: relative;
+      z-index: 2;
       display: flex;
-      gap: 14px;
       align-items: center;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 6px;
+    }
+    .spotlight-loc {
+      min-width: 0;
+      flex: 1;
+      font-size: 11px;
+      color: rgba(245, 244, 238, 0.62);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .square-cta {
+      flex: 0 0 auto;
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      background: var(--lime);
+      color: #14140F;
+      box-shadow: 0 12px 26px -14px rgba(242, 234, 46, 0.9);
+      transition: transform 0.22s var(--ease), box-shadow 0.22s var(--ease);
+    }
+    .square-cta:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 18px 34px -14px rgba(242, 234, 46, 0.95); }
+    .spotlight-empty { font-size: 12.5px; color: rgba(245, 244, 238, 0.55); margin-top: 6px; }
+
+    /* ---------- Activity chart ---------- */
+    .activity-chart {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 108px;
+      margin-top: auto;
+      padding-top: 8px;
+      border-bottom: 1px solid var(--glass-line);
+    }
+    .bar-col {
+      flex: 1 1 0;
+      min-width: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+    .bar-stack {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      height: 100%;
+      border-radius: 7px;
+      background: rgba(20, 20, 20, 0.04);
+      overflow: hidden;
+      transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+    }
+    .bar-col:hover .bar-stack { background: rgba(20, 20, 20, 0.075); transform: translateY(-2px); }
+    .bar-stack i { display: block; width: 100%; transition: height 0.6s var(--ease); }
+    .bar-veto { background: linear-gradient(180deg, var(--apricot), var(--apricot-deep)); }
+    .bar-match { background: linear-gradient(180deg, var(--lime-soft), var(--lime-deep)); }
+    .bar-x {
+      font-size: 9px;
+      letter-spacing: 0.04em;
+      color: var(--text-3);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      margin-bottom: 2px;
+    }
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-top: 14px;
+      font-size: 11.5px;
+      color: var(--text-2);
+      letter-spacing: 0;
+    }
+    .chart-legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .chart-legend b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    /* ---------- Signal ring ---------- */
+    .ring-wrap {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-top: 2px;
+    }
+    .ring { width: 104px; height: 104px; flex: 0 0 auto; transform: rotate(-90deg); }
+    .ring circle { fill: none; stroke-width: 9; stroke-linecap: round; }
+    .ring .track { stroke: rgba(20, 20, 20, 0.08); }
+    .ring .val { stroke: var(--apricot); transition: stroke-dashoffset 0.9s var(--ease); }
+    [data-theme="dark"] .ring .track { stroke: rgba(255, 255, 255, 0.1); }
+    .ring-meta { min-width: 0; }
+    .ring-meta b {
+      display: block;
+      font-size: 30px;
+      font-weight: 500;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .ring-meta em {
+      display: block;
+      margin-top: 5px;
+      font-style: normal;
+      font-size: 11px;
+      color: var(--text-3);
+      letter-spacing: 0.02em;
+    }
+    .span-line {
+      position: relative;
+      z-index: 2;
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid var(--glass-line);
+      font-size: 12px;
+      color: var(--text-2);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
+    }
+    .span-line b { color: var(--text); font-weight: 500; }
+
+    /* ---------- Filter bar ---------- */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       flex-wrap: wrap;
+      padding: 10px;
+      margin: 4px 0 18px;
+      border-radius: var(--r-pill);
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(22px) saturate(160%);
+      -webkit-backdrop-filter: blur(22px) saturate(160%);
+      box-shadow: 0 14px 40px -34px rgba(20, 20, 20, 0.7);
     }
     .search-box {
-      flex: 1;
-      min-width: 260px;
-      position: relative;
+      flex: 1 1 260px;
+      min-width: 200px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      height: 42px;
+      padding: 0 16px;
+      border-radius: var(--r-pill);
+      background: rgba(255, 255, 255, 0.55);
+      border: 1px solid transparent;
+      color: var(--text-3);
+      transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease),
+                  background 0.2s var(--ease);
     }
+    .search-box:focus-within {
+      background: rgba(255, 255, 255, 0.8);
+      border-color: rgba(20, 20, 20, 0.12);
+      box-shadow: 0 0 0 3px rgba(242, 234, 46, 0.32);
+    }
+    [data-theme="dark"] .search-box,
+    [data-theme="dark"] .select-filter { background-color: rgba(255, 255, 255, 0.07); color: var(--text); }
+    [data-theme="dark"] .search-box { background: rgba(255, 255, 255, 0.07); }
+    [data-theme="dark"] .search-box:focus-within { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.24); }
+    [data-theme="dark"] .select-filter:hover { background-color: rgba(255, 255, 255, 0.12); }
+    [data-theme="dark"] .btn-primary { background: #F2F1EC; color: #121210 !important; }
+    [data-theme="dark"] .btn-primary:hover { background: var(--lime); color: #121210 !important; }
+    [data-theme="dark"] .bar-stack { background: rgba(255, 255, 255, 0.07); }
+    [data-theme="dark"] .bar-col:hover .bar-stack { background: rgba(255, 255, 255, 0.12); }
     .search-input {
-      width: 100%;
-      background: var(--parchment);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px 14px;
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: none;
+      background: transparent;
       font-family: var(--sans);
       font-size: 13px;
-      color: var(--near-black);
-      outline: none;
-      transition: border-color 0.15s;
+      letter-spacing: 0;
+      color: var(--text);
     }
-    .search-input:focus {
-      border-color: var(--brand);
-    }
+    .search-input::placeholder { color: var(--text-3); }
+    .search-icon { flex: 0 0 auto; }
+
     .select-filter {
-      background: var(--parchment);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px 12px;
+      height: 42px;
+      padding: 0 34px 0 16px;
+      border-radius: var(--r-pill);
+      background-color: rgba(255, 255, 255, 0.5);
+      border: 1px solid transparent;
+      color: var(--text-2);
       font-family: var(--sans);
-      font-size: 13px;
-      color: var(--dark-warm);
-      outline: none;
+      font-size: 12.5px;
+      letter-spacing: 0;
+      appearance: none;
+      -webkit-appearance: none;
       cursor: pointer;
+      outline: none;
+      background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B8A83' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
     }
+    .select-filter:hover { background-color: rgba(255, 255, 255, 0.75); color: var(--text); }
+
     .results-count {
-      font-family: var(--sans);
-      font-size: 12px;
-      color: var(--stone);
       margin-left: auto;
+      padding: 0 6px;
+      font-size: 11.5px;
+      color: var(--text-3);
+      letter-spacing: 0;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .reset-btn {
+      flex: 0 0 auto;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: var(--lime);
+      color: #14140F;
+      cursor: pointer;
+      box-shadow: 0 10px 22px -14px rgba(200, 190, 20, 0.9);
+      transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+    }
+    .reset-btn:hover { transform: rotate(-40deg); box-shadow: 0 14px 26px -14px rgba(200, 190, 20, 0.95); }
+
+    /* ---------- Views ---------- */
+    .tab-view { display: none; }
+    .tab-view.active { display: block; animation: viewIn 0.35s var(--ease); }
+    @keyframes viewIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: none; }
     }
 
-    /* Views */
-    .tab-view { display: none; }
-    .tab-view.active { display: block; }
-
-    /* Cards Grid */
+    /* ---------- Match cards ---------- */
     .cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
-      gap: 20px;
-      margin-bottom: 48px;
-    }
-    @media (max-width: 600px) {
-      .cards-grid { grid-template-columns: 1fr; }
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 16px;
+      margin-bottom: 0;
     }
     .kami-card {
-      background: var(--ivory);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 24px;
+      position: relative;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      padding: 22px;
+      border-radius: var(--r-lg);
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(20px) saturate(150%);
+      -webkit-backdrop-filter: blur(20px) saturate(150%);
+      box-shadow: 0 20px 50px -40px rgba(24, 22, 18, 0.75);
+      transition: transform 0.28s var(--ease), box-shadow 0.28s var(--ease),
+                  border-color 0.28s var(--ease), background 0.28s var(--ease);
     }
     .kami-card:hover {
-      border-color: var(--line);
-      box-shadow: 0 4px 12px rgba(20, 20, 19, 0.04);
+      transform: translateY(-3px);
+      background: var(--glass-strong);
+      border-color: #FFFFFF;
+      box-shadow: 0 30px 64px -40px rgba(24, 22, 18, 0.7);
     }
+    [data-theme="dark"] .kami-card:hover { border-color: rgba(255, 255, 255, 0.22); }
 
+    .score-watermark {
+      position: absolute;
+      top: -34px;
+      right: 12px;
+      font-size: 96px;
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: -0.07em;
+      color: rgba(20, 20, 19, 0.03);
+      pointer-events: none;
+      user-select: none;
+      font-variant-numeric: tabular-nums;
+    }
+    [data-theme="dark"] .score-watermark { color: rgba(255, 255, 255, 0.04); }
+
+    .card-body { position: relative; z-index: 1; }
     .card-header-row {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 16px;
+      gap: 14px;
       margin-bottom: 12px;
     }
     .company-label {
-      font-family: var(--sans);
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--brand);
+      font-size: 10.5px;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.13em;
+      color: var(--text-3);
     }
     .job-title {
+      margin-top: 5px;
       font-size: 18px;
       font-weight: 500;
       line-height: 1.3;
-      margin-top: 3px;
+      letter-spacing: -0.022em;
     }
-    .job-title a {
-      color: var(--near-black);
-    }
-    .job-title a:hover {
-      color: var(--brand);
-    }
+    .job-title a { color: var(--text); }
+    .job-title a:hover { color: var(--apricot-deep); }
+
     .score-container {
+      flex: 0 0 auto;
       display: flex;
       flex-direction: column;
       align-items: flex-end;
+      gap: 5px;
     }
     .score-badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-family: var(--sans);
-      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: var(--r-pill);
+      font-size: 11.5px;
       font-weight: 600;
+      letter-spacing: 0.01em;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
+    .score-high { background: var(--apricot); color: #2B1405; }
+    .score-good { background: rgba(30, 130, 194, 0.14); color: #14608F; border: 1px solid rgba(30, 130, 194, 0.24); }
+    .score-mid  { background: rgba(20, 20, 20, 0.08); color: var(--text); }
+    [data-theme="dark"] .score-good { color: #7CC0EA; background: rgba(30, 130, 194, 0.2); }
+    [data-theme="dark"] .score-mid { background: rgba(255, 255, 255, 0.1); color: var(--text-2); }
+
     .date-label {
-      font-family: var(--sans);
-      font-size: 11px;
-      color: var(--stone);
-      margin-top: 4px;
+      font-size: 10.5px;
+      color: var(--text-3);
+      letter-spacing: 0.02em;
+      font-variant-numeric: tabular-nums;
     }
 
-    /* Tags */
     .tags-row {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
     .kami-tag {
-      font-family: var(--sans);
+      display: inline-flex;
+      align-items: center;
+      max-width: 100%;
+      padding: 4px 10px;
+      border-radius: var(--r-pill);
+      background: rgba(20, 20, 19, 0.055);
+      border: 1px solid transparent;
+      color: var(--text-2);
       font-size: 11px;
-      background: var(--tag-bg);
-      color: var(--brand);
-      padding: 3px 8px;
-      border-radius: 4px;
-      line-height: 1.3;
+      letter-spacing: 0;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: background 0.18s var(--ease), color 0.18s var(--ease);
     }
-    .kami-tag:hover {
-      background: #c8daf0;
-    }
+    .kami-tag:hover { background: rgba(242, 234, 46, 0.45); color: #17170F; }
     .salary-tag {
-      background: #e5ece5;
-      color: #2b562b;
+      background: rgba(30, 130, 194, 0.12);
+      color: #14608F;
       cursor: default;
     }
-    [data-theme="dark"] .salary-tag {
-      background: #1e2c1e;
-      color: #79ac79;
-    }
-    .source-tag {
-      background: var(--warm-sand);
-      color: var(--stone);
-      cursor: default;
-    }
+    .salary-tag:hover { background: rgba(30, 130, 194, 0.12); color: #14608F; }
+    .source-tag { background: rgba(255, 255, 255, 0.55); color: var(--text-3); cursor: default; }
+    .source-tag:hover { background: rgba(255, 255, 255, 0.55); color: var(--text-3); }
+    [data-theme="dark"] .kami-tag { background: rgba(255, 255, 255, 0.08); }
+    [data-theme="dark"] .salary-tag { background: rgba(30, 130, 194, 0.22); color: #8FC7EA; }
+    [data-theme="dark"] .source-tag { background: rgba(255, 255, 255, 0.1); }
 
-    /* Callout Boxes */
+    /* callout blocks */
     .callout-box {
-      background: var(--inline-code-bg);
-      border-radius: 6px;
-      padding: 12px 14px;
-      margin-bottom: 12px;
+      position: relative;
+      padding: 12px 14px 13px;
+      border-radius: var(--r-md);
+      margin-bottom: 10px;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.7);
     }
     .why-box {
-      border-left: 3px solid var(--brand);
+      background: linear-gradient(170deg, rgba(242, 234, 46, 0.2), rgba(242, 234, 46, 0.05));
+      border-color: rgba(226, 214, 40, 0.5);
     }
-    .tips-box {
-      border-left: 3px solid var(--stone);
-    }
+    .tips-box { background: rgba(20, 20, 19, 0.035); border-color: rgba(20, 20, 19, 0.05); }
+    [data-theme="dark"] .callout-box { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.08); }
+    [data-theme="dark"] .why-box { background: linear-gradient(170deg, rgba(242, 234, 46, 0.12), rgba(242, 234, 46, 0.03)); border-color: rgba(242, 234, 46, 0.22); }
+    [data-theme="dark"] .tips-box { background: rgba(255, 255, 255, 0.04); }
+
     .callout-title {
-      font-family: var(--sans);
-      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10.5px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--dark-warm);
-      margin-bottom: 4px;
+      letter-spacing: 0.11em;
+      color: var(--text-2);
+      margin-bottom: 5px;
     }
-    .callout-bullet {
-      color: var(--brand);
-      margin-right: 4px;
-    }
+    .callout-bullet { color: var(--apricot-deep); font-size: 12px; }
     .callout-text {
-      font-size: 13.5px;
-      line-height: 1.5;
-      color: var(--dark-warm);
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-2);
+      letter-spacing: 0;
     }
+    .callout-text strong { font-weight: 600; color: var(--text); }
+    .callout-text code {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      padding: 1px 5px;
+      border-radius: 5px;
+      background: rgba(20, 20, 19, 0.06);
+      color: var(--text);
+    }
+    [data-theme="dark"] .callout-text code { background: rgba(255, 255, 255, 0.1); }
+    .callout-text.is-clamped {
+      display: -webkit-box;
+      -webkit-line-clamp: 6;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .callout-box.expanded .callout-text.is-clamped {
+      display: block;
+      -webkit-line-clamp: unset;
+      overflow: visible;
+    }
+    .more-btn {
+      margin-top: 7px;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 11px;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(20, 20, 19, 0.18);
+      transition: color 0.18s var(--ease), border-color 0.18s var(--ease);
+    }
+    .more-btn:hover { color: var(--text); border-bottom-color: currentColor; }
 
-    /* Card Footer */
+    /* card footer */
     .card-footer {
-      border-top: 1px solid var(--border-soft);
-      padding-top: 14px;
+      position: relative;
+      z-index: 1;
       margin-top: 12px;
+      padding-top: 13px;
+      border-top: 1px solid var(--glass-line);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      font-family: var(--sans);
+      gap: 14px;
     }
-    /* Left metadata block shrinks/truncates instead of squeezing the button */
-    .card-footer > div {
-      min-width: 0;
-      flex: 1 1 auto;
-      overflow: hidden;
-    }
+    .card-footer > div { min-width: 0; flex: 1 1 auto; overflow: hidden; }
     .path-label {
       font-family: var(--mono);
-      font-size: 11px;
-      color: var(--stone);
-      max-width: 100%;
+      font-size: 10.5px;
+      color: var(--text-3);
+      letter-spacing: -0.01em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .eval-chip {
+      margin-top: 4px;
+      font-size: 10.5px;
+      color: var(--text-3);
+      letter-spacing: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .btn-primary {
+      flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      background: var(--brand);
-      color: #faf9f5 !important;
-      font-family: var(--sans);
-      font-size: 12.5px;
+      gap: 7px;
+      padding: 9px 16px;
+      border-radius: var(--r-pill);
+      background: var(--ink);
+      color: #F7F6F0 !important;
+      font-size: 12px;
       font-weight: 500;
-      padding: 7px 18px;
-      border-radius: 999px;
-      border: none;
-      cursor: pointer;
+      letter-spacing: 0.01em;
       white-space: nowrap;
-      flex: 0 0 auto;
-      transition: background 0.15s, transform 0.1s;
+      transition: background 0.2s var(--ease), transform 0.2s var(--ease);
     }
-    .btn-primary:hover {
-      background: var(--brand-light);
-      transform: translateY(-1px);
-    }
-    .btn-primary .arrow {
-      font-size: 13px;
-    }
+    .btn-primary:hover { background: var(--apricot); color: #23120A !important; transform: translateY(-1px); }
+    .btn-primary .arrow { font-size: 13px; transition: transform 0.2s var(--ease); }
+    .btn-primary:hover .arrow { transform: translate(2px, -2px); }
 
-    /* Veto Audit Table */
-    .audit-section {
-      background: var(--ivory);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 24px;
-      margin-bottom: 48px;
-    }
-    .audit-header {
-      display: flex;
-      justify-content: space-between;
+    .repeat-badge {
+      display: inline-flex;
       align-items: center;
-      margin-bottom: 16px;
-    }
-    .audit-title {
-      font-size: 18px;
+      gap: 3px;
+      padding: 3px 8px;
+      border-radius: var(--r-pill);
+      background: rgba(20, 20, 19, 0.055);
+      color: var(--text-2);
+      font-size: 10px;
       font-weight: 500;
-      color: var(--near-black);
+      letter-spacing: 0.01em;
+      white-space: nowrap;
     }
-    .audit-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: var(--sans);
-      font-size: 12.5px;
-    }
-    .audit-th {
-      text-align: left;
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      color: var(--stone);
-      font-weight: 500;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .audit-td {
-      padding: 11px 14px;
-      border-bottom: 1px solid var(--border-soft);
-      color: var(--dark-warm);
-    }
-    .breaking-badge {
-      display: inline-block;
-      background: var(--breaking-bg);
-      color: var(--breaking-fg);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11.5px;
-      font-weight: 500;
-    }
+    [data-theme="dark"] .repeat-badge { background: rgba(255, 255, 255, 0.09); }
 
-    .empty-state {
-      background: var(--ivory);
-      border: 1px dashed var(--border);
-      border-radius: 10px;
-      padding: 48px 24px;
-      text-align: center;
-      color: var(--stone);
-      font-family: var(--sans);
-    }
-    .empty-icon { font-size: 28px; margin-bottom: 8px; }
-
-    /* Evaluation date grouping (cumulative history) */
-    .date-section { margin-bottom: 44px; }
+    /* evaluation run grouping */
+    .date-section { margin-bottom: 34px; }
     .date-section-header {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 12px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 10px;
-      margin-bottom: 20px;
+      padding-bottom: 11px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid var(--glass-line);
     }
     .date-heading {
-      font-size: 19px;
-      font-weight: 500;
-      color: var(--near-black);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
       font-variant-numeric: tabular-nums;
-      letter-spacing: -0.2px;
+      color: var(--text);
+    }
+    .date-heading::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--lime);
+      box-shadow: 0 0 0 3px rgba(242, 234, 46, 0.25);
     }
     .date-hint {
-      font-family: var(--sans);
-      font-size: 12px;
-      color: var(--stone);
       min-width: 0;
       max-width: 46%;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      color: var(--text-3);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .date-count {
-      font-family: var(--sans);
-      font-size: 12px;
-      color: var(--stone);
       margin-left: auto;
-    }
-    .date-section .cards-grid { margin-bottom: 0; }
-    .repeat-badge {
-      display: inline-block;
-      background: var(--brand-tint);
-      color: var(--brand);
-      border: 1px solid var(--tag-bg);
-      padding: 2px 7px;
-      border-radius: 999px;
-      font-family: var(--sans);
+      padding: 3px 9px;
+      border-radius: var(--r-pill);
+      background: var(--glass-strong);
+      border: 1px solid var(--glass-border);
       font-size: 10.5px;
-      font-weight: 600;
-      margin-top: 5px;
+      color: var(--text-2);
+      letter-spacing: 0.02em;
+      white-space: nowrap;
     }
-    .eval-chip {
-      font-family: var(--sans);
+
+    /* ---------- Panels (history / audit) ---------- */
+    .audit-section {
+      padding: 22px;
+      margin-bottom: 28px;
+      border-radius: var(--r-xl);
+      background: var(--panel);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-card);
+    }
+    .audit-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .audit-title {
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .breaking-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: var(--r-pill);
+      background: rgba(254, 146, 81, 0.18);
+      color: #8E4112;
       font-size: 11px;
-      color: var(--stone);
-      margin-top: 6px;
-      line-height: 1.5;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    [data-theme="dark"] .breaking-badge { color: #F5A26D; background: rgba(254, 146, 81, 0.16); }
+    .breaking-badge.ok { background: rgba(242, 234, 46, 0.4); color: #4A470A; }
+    [data-theme="dark"] .breaking-badge.ok { background: rgba(242, 234, 46, 0.16); color: #E8E27A; }
+
+    /* audit table */
+    .audit-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 12.5px;
+      letter-spacing: 0;
+    }
+    .audit-th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 10px 14px;
+      text-align: left;
+      background: var(--panel);
+      border-bottom: 1px solid var(--glass-line);
+      color: var(--text-3);
+      font-weight: 500;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+    }
+    .audit-th:first-child { border-radius: var(--r-sm) 0 0 0; width: 30%; }
+    .audit-th:nth-child(2) { width: 18%; }
+    .audit-th:last-child { border-radius: 0 var(--r-sm) 0 0; }
+    .audit-td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--glass-line);
+      color: var(--text-2);
+      vertical-align: middle;
+    }
+    .audit-td:first-child { color: var(--text); font-weight: 500; letter-spacing: -0.01em; }
+    .audit-row { transition: background 0.18s var(--ease); }
+    .audit-row:hover { background: rgba(255, 255, 255, 0.5); }
+    [data-theme="dark"] .audit-row:hover { background: rgba(255, 255, 255, 0.05); }
+    .audit-reason {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 9px;
+      background: rgba(254, 146, 81, 0.13);
+      color: #8E4112;
+      font-size: 11.5px;
+      line-height: 1.55;
+      letter-spacing: 0;
+      white-space: normal;
+    }
+    [data-theme="dark"] .audit-reason { background: rgba(254, 146, 81, 0.14); color: #F0A471; }
+
+    /* ---------- Crawled knowledge base table ---------- */
+    .table-panel {
+      border-radius: var(--r-lg);
+      background: var(--panel);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+    .table-row {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1.7fr) minmax(0, 0.85fr) 118px 78px minmax(0, 0.9fr) 34px;
+      align-items: center;
+      gap: 16px;
+      padding: 11px 18px;
+      border-top: 1px solid var(--glass-line);
+      transition: background 0.18s var(--ease);
+      content-visibility: auto;
+      contain-intrinsic-size: 70px;
+    }
+    .table-row:first-child { border-top: 0; }
+    .table-row:hover { background: rgba(255, 255, 255, 0.55); }
+    [data-theme="dark"] .table-row:hover { background: rgba(255, 255, 255, 0.05); }
+    .table-row.head {
+      padding-top: 14px;
+      padding-bottom: 12px;
+      background: transparent;
+      border-top: 0;
+      font-size: 9.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      color: var(--text-3);
+      content-visibility: visible;
+    }
+    .table-row.head:hover { background: transparent; }
+    .thumb {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      background: linear-gradient(150deg, var(--ink-3), #08080A);
+      color: #F5F4EE;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 8px 18px -14px rgba(0, 0, 0, 0.9);
+    }
+    .cell-title {
+      min-width: 0;
+      font-size: 13.5px;
+      font-weight: 500;
+      letter-spacing: -0.015em;
+      color: var(--text);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    /* Report timeline */
-    .history-list { display: flex; flex-direction: column; gap: 10px; }
-    .history-row {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      background: var(--parchment);
-      border: 1px solid var(--border-soft);
-      border-radius: 8px;
-      padding: 12px 16px;
-      font-family: var(--sans);
-      font-size: 13px;
-      color: var(--dark-warm);
+    .cell-title:hover { color: var(--apricot-deep); }
+    .cell-sub {
+      margin-top: 2px;
+      font-family: var(--mono);
+      font-size: 9.5px;
+      color: var(--text-3);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
+    .cell-muted {
+      min-width: 0;
+      font-size: 12px;
+      color: var(--text-2);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      letter-spacing: 0;
+    }
+    .cell-tags { display: flex; gap: 5px; min-width: 0; overflow: hidden; }
+    .cell-tags .kami-tag { font-size: 10px; padding: 3px 8px; max-width: 118px; }
+    .row-btn {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: rgba(20, 20, 19, 0.05);
+      color: var(--text-2);
+      transition: background 0.18s var(--ease), color 0.18s var(--ease),
+                  transform 0.18s var(--ease);
+    }
+    .row-btn:hover { background: var(--ink); color: #F7F6F0; transform: translate(1px, -1px); }
+    [data-theme="dark"] .row-btn { background: rgba(255, 255, 255, 0.08); }
+
+    /* ---------- History timeline ---------- */
+    .history-list { display: flex; flex-direction: column; gap: 4px; }
+    .history-row {
+      display: grid;
+      grid-template-columns: 100px minmax(0, 1.25fr) minmax(120px, 300px) 158px;
+      align-items: center;
+      gap: 18px;
+      padding: 12px 14px;
+      border-radius: var(--r-sm);
+      font-size: 12.5px;
+      letter-spacing: 0;
+      color: var(--text-2);
+      transition: background 0.18s var(--ease);
+    }
+    .history-row:hover { background: rgba(255, 255, 255, 0.5); }
+    [data-theme="dark"] .history-row:hover { background: rgba(255, 255, 255, 0.05); }
     .history-date {
       font-weight: 600;
-      color: var(--brand);
+      color: var(--text);
       font-variant-numeric: tabular-nums;
-      min-width: 92px;
+      letter-spacing: -0.01em;
     }
     .history-file {
       font-family: var(--mono);
-      font-size: 11.5px;
-      color: var(--stone);
-      flex: 1;
+      font-size: 10.5px;
+      color: var(--text-3);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .history-counts { display: flex; gap: 8px; }
-
-    footer {
-      border-top: 1px solid var(--border);
-      margin-top: 56px;
-      padding-top: 24px;
-      text-align: center;
-      font-family: var(--sans);
-      font-size: 12px;
-      color: var(--stone);
+    .history-bar {
+      display: flex;
+      height: 6px;
+      border-radius: var(--r-pill);
+      background: rgba(20, 20, 19, 0.07);
+      overflow: hidden;
+      gap: 1px;
     }
-    footer a { color: var(--brand); }
+    [data-theme="dark"] .history-bar { background: rgba(255, 255, 255, 0.1); }
+    .history-bar i { display: block; height: 100%; }
+    .history-bar .hb-match { background: var(--lime); }
+    .history-bar .hb-veto { background: var(--apricot); }
+    .history-counts { display: flex; gap: 6px; justify-content: flex-end; }
+    .history-row .breaking-badge { font-size: 10px; padding: 3px 9px; }
+
+    /* ---------- Empty state ---------- */
+    .empty-state {
+      padding: 54px 24px;
+      border-radius: var(--r-xl);
+      border: 1px dashed var(--glass-border);
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      text-align: center;
+      color: var(--text-3);
+      font-size: 13px;
+      letter-spacing: 0;
+    }
+    .empty-icon { font-size: 26px; margin-bottom: 10px; opacity: 0.75; }
+
+    /* ---------- Footer ---------- */
+    footer {
+      margin-top: 46px;
+      padding-top: 20px;
+      border-top: 1px solid var(--glass-line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 11px;
+      color: var(--text-3);
+      letter-spacing: 0.01em;
+    }
+    footer .foot-links { display: flex; gap: 14px; align-items: center; }
+    footer a { color: var(--text-2); border-bottom: 1px solid transparent; }
+    footer a:hover { color: var(--text); border-bottom-color: currentColor; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 1180px) {
+      .col-4 { grid-column: span 6; }
+      .col-8 { grid-column: span 12; }
+      .col-3 { grid-column: span 6; }
+      .bento-ink { grid-column: span 12; }
+      .signal-card {
+        grid-column: span 12;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 26px;
+      }
+      .signal-card .bento-head { width: 100%; }
+      .signal-card .ring-wrap { margin-top: 0; }
+      .signal-card .span-line {
+        margin-top: 0;
+        padding-top: 0;
+        padding-left: 26px;
+        border-top: 0;
+        border-left: 1px solid var(--glass-line);
+      }
+      .bento-ink .spotlight-body {
+        flex-direction: row;
+        align-items: center;
+        gap: 30px;
+        flex-wrap: wrap;
+      }
+      .bento-ink .spotlight-score { font-size: 64px; }
+      .bento-ink .spotlight-company { margin-top: 0; }
+      .bento-ink .spotlight-title { font-size: 20px; max-width: 44ch; }
+    }
+    @media (max-width: 1000px) {
+      .app { flex-direction: column; gap: 16px; padding: 18px 18px 56px; }
+      .rail {
+        position: sticky;
+        top: 12px;
+        flex-direction: row;
+        width: 100%;
+        gap: 4px;
+        padding: 7px;
+        border-radius: 20px;
+        align-items: center;
+      }
+      .rail-mark { width: 40px; height: 40px; border-radius: 13px; margin: 0 4px 0 0; }
+      .rail-mark svg { width: 20px; height: 20px; }
+      .rail-sep { width: 1px; height: 24px; margin: 0 4px; }
+      .tab-btn {
+        width: auto;
+        height: 40px;
+        flex: 1 1 auto;
+        display: flex;
+        gap: 7px;
+        padding: 0 10px;
+        border-radius: 14px;
+      }
+      .tab-btn svg { width: 17px; height: 17px; }
+      .tab-btn.active::before { display: none; }
+      .tab-label {
+        position: static;
+        opacity: 1;
+        transform: none;
+        background: transparent;
+        color: inherit;
+        padding: 0;
+        font-size: 11.5px;
+        font-weight: 500;
+      }
+      [data-theme="dark"] .tab-label { background: transparent; color: inherit; }
+      .tab-badge {
+        position: static;
+        margin-left: auto;
+        background: rgba(20, 20, 19, 0.08);
+        color: var(--text-2);
+        height: 16px;
+      }
+      [data-theme="dark"] .tab-badge { background: rgba(255, 255, 255, 0.12); }
+      .tab-btn.active .tab-badge { background: var(--ink); color: #F7F6F0; }
+      header { margin-bottom: 20px; }
+      .col-4, .col-3, .col-6 { grid-column: span 6; }
+      .cards-grid { grid-template-columns: 1fr; }
+      .table-row {
+        grid-template-columns: 40px minmax(0, 1fr) 34px;
+        gap: 12px;
+        padding: 11px 14px;
+      }
+      .table-row > .cell-hide { display: none; }
+      .table-row.head { display: none; }
+      .history-row { grid-template-columns: 84px minmax(0, 1fr) 120px; gap: 12px; }
+      .history-row .history-file { display: none; }
+      .history-row .history-bar { display: none; }
+      .bar-x { display: none; }
+      .activity-chart { height: 92px; }
+    }
+    @media (max-width: 700px) {
+      .app { padding: 14px 14px 48px; }
+      .bento { gap: 12px; }
+      .col-4, .col-3, .col-6, .col-8, .col-12 { grid-column: span 12; }
+      .bento-card { min-height: 178px; padding: 19px; }
+      .metric-value { font-size: 50px; }
+      .signal-card { flex-direction: column; align-items: stretch; gap: 10px; }
+      .signal-card .span-line {
+        margin-top: auto;
+        padding-top: 14px;
+        padding-left: 0;
+        border-top: 1px solid var(--glass-line);
+        border-left: 0;
+      }
+      .rail-mark, .rail-sep { display: none; }
+      .rail { overflow-x: auto; scrollbar-width: none; }
+      .rail::-webkit-scrollbar { display: none; }
+      .tab-btn { gap: 6px; padding: 0 8px; justify-content: center; }
+      .tab-label { display: inline; font-size: 11px; }
+      .tab-btn .tab-badge {
+        position: static;
+        margin-left: 2px;
+        height: 15px;
+        min-width: 15px;
+        font-size: 8.5px;
+        background: rgba(20, 20, 19, 0.1);
+        color: var(--text-2);
+        box-shadow: none;
+      }
+      .tab-btn.active .tab-badge { background: var(--ink); color: #F7F6F0; }
+      .date-hint { max-width: 34%; }
+      .audit-section { padding: 16px; }
+      .audit-table { font-size: 11.5px; }
+      .audit-td, .audit-th { padding: 9px 8px; }
+      .filter-bar { border-radius: 22px; }
+      .results-count { margin-left: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .bento-glass, .kami-card, .audit-section, .table-panel, .filter-bar, .rail,
+      .pill-btn, .empty-state { background: rgba(252, 251, 248, 0.94); }
+      [data-theme="dark"] .bento-glass,
+      [data-theme="dark"] .kami-card,
+      [data-theme="dark"] .audit-section,
+      [data-theme="dark"] .table-panel,
+      [data-theme="dark"] .filter-bar,
+      [data-theme="dark"] .rail,
+      [data-theme="dark"] .pill-btn { background: #1A1A1E; }
+    }
   </style>
 
   <!-- External or local data loader -->
   <script src="data.js"></script>
 </head>
 <body>
-  <div class="page-container">
+  <div class="app">
 
-    <!-- Header -->
-    <header>
-      <div class="header-main">
-        <div class="logo-badge" title="JD Matcher · AI Job Matching Engine">
-          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Job Description Document Card -->
-            <rect x="5" y="4" width="16" height="22" rx="3" stroke="#FAF9F5" stroke-width="2" fill="none"/>
-            <path d="M9 10H15M9 15H17M9 20H13" stroke="#FAF9F5" stroke-width="1.75" stroke-linecap="round"/>
-            <!-- AI Matching Lens / Target Badge -->
-            <circle cx="21" cy="20" r="6" fill="var(--brand)" stroke="#FAF9F5" stroke-width="2"/>
-            <!-- Precision Match Checkmark -->
-            <path d="M18.5 20L20.2 21.7L23.7 18.2" stroke="#FAF9F5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <div class="title-group">
-          <h1>JD Matcher</h1>
-          <div class="subtitle">AI-Powered JD & Resume Match Engine · Curated Remote Opportunities</div>
-        </div>
+    <!-- Icon rail navigation -->
+    <nav class="rail" aria-label="Dashboard sections">
+      <div class="rail-mark" title="JD Matcher">
+        <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="5" y="4" width="16" height="22" rx="3" stroke="currentColor" stroke-width="2"/>
+          <path d="M9.5 10.5H15.5M9.5 15.5H17M9.5 20.5H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="21.5" cy="20.5" r="5.5" fill="#0D0D0D" stroke="currentColor" stroke-width="2"/>
+          <path d="M19.3 20.5L20.8 22L23.8 19" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </div>
-      <div class="header-actions">
-        <button id="themeToggle" class="theme-toggle-btn" title="Toggle warm dark mode">Theme: Parchment</button>
-        <span id="datePill" class="date-pill">Updated: ${updatedAt}</span>
-      </div>
-    </header>
+      <div class="rail-sep" aria-hidden="true"></div>
 
-    <!-- KPI Metric Cards -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-label">Recommended Matches</div>
-        <div id="statMatched" class="metric-value">0</div>
-        <div class="metric-note">Score ≥ 6.0 Approved</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Top Matches (≥ 8.5)</div>
-        <div id="statTop" class="metric-value" style="color: var(--brand);">0</div>
-        <div class="metric-note">High conviction alignment</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Knowledge Base (Crawled)</div>
-        <div id="statCrawled" class="metric-value">0</div>
-        <div class="metric-note">Markdown JDs in data/jds</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Hard Veto Filtered</div>
-        <div id="statVetoed" class="metric-value" style="color: var(--breaking-fg);">0</div>
-        <div class="metric-note">Excluded via constraints</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Reports Aggregated</div>
-        <div id="statReports" class="metric-value">0</div>
-        <div class="metric-note">data/matches (incl. archive/)</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">History Span</div>
-        <div id="statSpan" class="metric-value" style="font-size: 19px; line-height: 1.5;">—</div>
-        <div class="metric-note">First → latest evaluation</div>
-      </div>
-    </div>
-
-    <!-- Tab Navigation -->
-    <div class="tabs-bar">
-      <button class="tab-btn active" data-tab="matches">
-        <span>🎯 Matched Recommendations</span>
+      <button class="tab-btn active" data-tab="matches" aria-label="Matched recommendations">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.2"></circle>
+          <circle cx="12" cy="12" r="3.4"></circle>
+          <path d="M12 1.8v3.2M12 19v3.2M1.8 12h3.2M19 12h3.2"></path>
+        </svg>
+        <span class="tab-label">Matches</span>
         <span id="badgeMatched" class="tab-badge">0</span>
       </button>
-      <button class="tab-btn" data-tab="crawled">
-        <span>📚 All Crawled Jobs</span>
+
+      <button class="tab-btn" data-tab="crawled" aria-label="All crawled jobs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3.2 21 8l-9 4.8L3 8l9-4.8Z"></path>
+          <path d="M3 12.4l9 4.8 9-4.8"></path>
+          <path d="M3 16.8l9 4.8 9-4.8"></path>
+        </svg>
+        <span class="tab-label">Crawled</span>
         <span id="badgeCrawled" class="tab-badge">0</span>
       </button>
-      <button class="tab-btn" data-tab="history">
-        <span>📜 Evaluation History</span>
+
+      <button class="tab-btn" data-tab="history" aria-label="Evaluation history">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3.2 12a8.8 8.8 0 1 0 2.9-6.5"></path>
+          <path d="M3 3.4v4.3h4.3"></path>
+          <path d="M12 7.6V12l3 1.9"></path>
+        </svg>
+        <span class="tab-label">History</span>
         <span id="badgeHistory" class="tab-badge">0</span>
       </button>
-      <button class="tab-btn" data-tab="audit">
-        <span>⛔ Excluded Audit Log</span>
+
+      <button class="tab-btn" data-tab="audit" aria-label="Excluded audit log">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2.8 4.6 6v6c0 4.6 3.1 7.9 7.4 9.3 4.3-1.4 7.4-4.7 7.4-9.3V6L12 2.8Z"></path>
+          <path d="M9.4 9.6l5.2 5.2M14.6 9.6l-5.2 5.2"></path>
+        </svg>
+        <span class="tab-label">Vetoed</span>
         <span id="badgeAudit" class="tab-badge">0</span>
       </button>
-    </div>
+    </nav>
 
-    <!-- Filters & Search Toolbar -->
-    <div class="filter-toolbar">
-      <div class="search-box">
-        <input type="text" id="searchInput" class="search-input" placeholder="Search by title, company, or skills...">
-      </div>
-      <select id="scoreFilter" class="select-filter">
-        <option value="0">All Scores (≥ 6.0)</option>
-        <option value="9">Top Match (≥ 9.0)</option>
-        <option value="8">Good Fit (≥ 8.0)</option>
-        <option value="7">Above 7.0</option>
-      </select>
-      <select id="sourceFilter" class="select-filter" style="display: none;">
-        <option value="all">All Sources</option>
-        <option value="remoteok">RemoteOK</option>
-        <option value="weworkremotely">WeWorkRemotely</option>
-      </select>
-      <span id="resultsCount" class="results-count">0 items</span>
-    </div>
+    <div class="page-container">
 
-    <!-- Tab View 1: Matched Recommendations (grouped by evaluation date) -->
-    <section id="matchesView" class="tab-view active">
-      <div id="matchesGrid"></div>
-    </section>
-
-    <!-- Tab View 2: All Crawled Jobs in Knowledge Base -->
-    <section id="crawledView" class="tab-view">
-      <div id="crawledGrid" class="cards-grid"></div>
-    </section>
-
-    <!-- Tab View 3: Evaluation History (report timeline) -->
-    <section id="historyView" class="tab-view">
-      <div class="audit-section">
-        <div class="audit-header">
-          <h2 class="audit-title">Match Report Timeline</h2>
-          <span id="historyCountBadge" class="tab-badge">0 reports</span>
+      <!-- Header -->
+      <header>
+        <div class="header-main">
+          <div class="title-group">
+            <h1>JD Matcher</h1>
+            <div class="subtitle">AI-powered JD &amp; resume match engine · curated remote opportunities</div>
+          </div>
         </div>
-        <div id="historyList" class="history-list"></div>
-      </div>
-    </section>
-
-    <!-- Tab View 4: Veto Audit Log -->
-    <section id="auditView" class="tab-view">
-      <div class="audit-section">
-        <div class="audit-header">
-          <h2 class="audit-title">Hard Constraint Exclusions (Audit Log)</h2>
-          <span id="auditCountBadge" class="breaking-badge">0 JDs vetoed</span>
+        <div class="header-actions">
+          <span id="datePill" class="pill-btn date-pill">Updated: ${updatedAt}</span>
+          <button id="themeToggle" class="pill-btn" title="Toggle frost / ink theme">
+            <span class="theme-dot" aria-hidden="true"></span>
+            <span id="themeLabel">Frost</span>
+          </button>
         </div>
-        <table class="audit-table">
-          <thead>
-            <tr>
-              <th class="audit-th">Role Title</th>
-              <th class="audit-th">Company</th>
-              <th class="audit-th">Reason for Exclusion</th>
-            </tr>
-          </thead>
-          <tbody id="auditTableBody"></tbody>
-        </table>
+      </header>
+
+      <!-- Bento: accent stats + spotlight -->
+      <section class="bento" aria-label="Key metrics">
+        <div class="bento-card bento-lime col-4">
+          <div class="bento-head">
+            <span class="bento-label">Recommended</span>
+            <span class="bento-chip">score ≥ 6.0</span>
+          </div>
+          <div id="statMatched" class="metric-value">0</div>
+          <div class="bento-split">
+            <div class="mini-stat">
+              <b id="statTop">0</b>
+              <em>top ≥ 8.5</em>
+            </div>
+            <div class="mini-stat">
+              <b id="statAvg">—</b>
+              <em>avg score</em>
+            </div>
+          </div>
+          <div class="bento-deco" aria-hidden="true"></div>
+          <span class="ink-pill">approved by agent</span>
+        </div>
+
+        <div class="bento-card bento-apricot col-4">
+          <div class="bento-head">
+            <span class="bento-label">Knowledge base</span>
+            <span class="bento-chip">crawled JDs</span>
+          </div>
+          <div id="statCrawled" class="metric-value">0</div>
+          <div class="legend">
+            <div class="legend-row"><span class="dot"></span>Reports aggregated<b id="statReports">0</b></div>
+            <div class="legend-row"><span class="dot dot-line"></span>Hard vetoed<b id="statVetoed">0</b></div>
+          </div>
+          <div class="metric-note">Markdown JDs indexed in data/jds</div>
+          <div class="bento-deco" aria-hidden="true"></div>
+        </div>
+
+        <div id="spotlightCard" class="bento-card bento-ink col-4"></div>
+
+        <div class="bento-card bento-glass col-8">
+          <div class="bento-head">
+            <span class="bento-label">Evaluation activity</span>
+            <span class="bento-chip">matched vs vetoed per run</span>
+          </div>
+          <div id="activityChart" class="activity-chart" role="img" aria-label="Matched and vetoed counts per evaluation run"></div>
+          <div class="chart-legend">
+            <span><i class="dot dot-lime"></i> Matched <b id="chartMatched">0</b></span>
+            <span><i class="dot dot-apricot"></i> Vetoed <b id="chartVetoed">0</b></span>
+          </div>
+        </div>
+
+        <div class="bento-card bento-glass col-4 signal-card">
+          <div class="bento-head">
+            <span class="bento-label">Signal</span>
+            <span class="bento-chip">conviction</span>
+          </div>
+          <div class="ring-wrap">
+            <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="track" cx="60" cy="60" r="52"></circle>
+              <circle class="val" id="ringVal" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7"></circle>
+            </svg>
+            <div class="ring-meta">
+              <b id="statShare">—</b>
+              <em>top-conviction share</em>
+            </div>
+          </div>
+          <div class="span-line">History <b id="statSpan">—</b></div>
+        </div>
+      </section>
+
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <label class="search-box">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.6-3.6"></path>
+          </svg>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search title, company, skills…" autocomplete="off">
+        </label>
+        <select id="scoreFilter" class="select-filter">
+          <option value="0">All scores (≥ 6.0)</option>
+          <option value="9">Top match (≥ 9.0)</option>
+          <option value="8">Good fit (≥ 8.0)</option>
+          <option value="7">Above 7.0</option>
+        </select>
+        <select id="sourceFilter" class="select-filter" style="display: none;">
+          <option value="all">All sources</option>
+          <option value="remoteok">RemoteOK</option>
+          <option value="weworkremotely">WeWorkRemotely</option>
+        </select>
+        <span id="resultsCount" class="results-count">0 items</span>
+        <button id="resetFilters" class="reset-btn" title="Reset filters" aria-label="Reset filters">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 2.6-6.4"></path>
+            <path d="M3 3.6v4.8h4.8"></path>
+          </svg>
+        </button>
       </div>
-    </section>
 
-    <!-- Footer -->
-    <footer>
-      Styled with <a href="https://github.com/tw93/kami" target="_blank" rel="noopener noreferrer">Kami</a> Design System · Warm Parchment, Ink-Blue Accent & Serif Hierarchy
-    </footer>
+      <!-- Tab View 1: Matched Recommendations (grouped by evaluation date) -->
+      <section id="matchesView" class="tab-view active">
+        <div id="matchesGrid"></div>
+      </section>
 
+      <!-- Tab View 2: All Crawled Jobs in Knowledge Base -->
+      <section id="crawledView" class="tab-view">
+        <div id="crawledGrid" class="table-panel"></div>
+      </section>
+
+      <!-- Tab View 3: Evaluation History (report timeline) -->
+      <section id="historyView" class="tab-view">
+        <div class="audit-section">
+          <div class="audit-header">
+            <h2 class="audit-title">Match report timeline</h2>
+            <span id="historyCountBadge" class="breaking-badge ok">0 reports</span>
+          </div>
+          <div id="historyList" class="history-list"></div>
+        </div>
+      </section>
+
+      <!-- Tab View 4: Veto Audit Log -->
+      <section id="auditView" class="tab-view">
+        <div class="audit-section">
+          <div class="audit-header">
+            <h2 class="audit-title">Hard constraint exclusions</h2>
+            <span id="auditCountBadge" class="breaking-badge">0 JDs vetoed</span>
+          </div>
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th class="audit-th">Role title</th>
+                <th class="audit-th">Company</th>
+                <th class="audit-th">Reason for exclusion</th>
+              </tr>
+            </thead>
+            <tbody id="auditTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer>
+        <span>JD Matcher · local-first job intelligence</span>
+        <span class="foot-links">
+          <span id="footGenerated">Frosted Workbench</span>
+          <a href="https://github.com/tw93/kami" target="_blank" rel="noopener noreferrer">Kami</a>
+        </span>
+      </footer>
+
+    </div>
   </div>
 
   <!-- Fallback / Inline Seed Data -->
@@ -1493,11 +2500,19 @@ ${initialBundleJson}
       // DOM references
       const statMatched = document.getElementById('statMatched');
       const statTop = document.getElementById('statTop');
+      const statAvg = document.getElementById('statAvg');
       const statCrawled = document.getElementById('statCrawled');
       const statVetoed = document.getElementById('statVetoed');
       const statReports = document.getElementById('statReports');
       const statSpan = document.getElementById('statSpan');
+      const statShare = document.getElementById('statShare');
+      const ringVal = document.getElementById('ringVal');
       const datePill = document.getElementById('datePill');
+
+      const spotlightCard = document.getElementById('spotlightCard');
+      const activityChart = document.getElementById('activityChart');
+      const chartMatched = document.getElementById('chartMatched');
+      const chartVetoed = document.getElementById('chartVetoed');
 
       const badgeMatched = document.getElementById('badgeMatched');
       const badgeCrawled = document.getElementById('badgeCrawled');
@@ -1521,6 +2536,10 @@ ${initialBundleJson}
       function escapeHtml(str) {
         if (!str) return '';
         return String(str)
+          .replace(/&#(\\d+);/g, (m, n) => {
+            const code = parseInt(n, 10);
+            return Number.isFinite(code) ? String.fromCodePoint(code) : m;
+          })
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
@@ -1528,31 +2547,136 @@ ${initialBundleJson}
           .replace(/'/g, '&#039;');
       }
 
+      // Escape + light markdown (bold and inline code) for the analysis callouts
+      function formatRich(str) {
+        return escapeHtml(str)
+          .replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>')
+          .replace(/\`([^\`]+)\`/g, '<code>$1</code>');
+      }
+
+      function callout(kind, label, bullet, text) {
+        const raw = text || '';
+        const long = raw.length > 320;
+        return \`
+          <div class="callout-box \${kind}">
+            <div class="callout-title"><span class="callout-bullet">\${bullet}</span> \${label}</div>
+            <p class="callout-text\${long ? ' is-clamped' : ''}">\${formatRich(raw)}</p>
+            \${long ? '<button type="button" class="more-btn">Read more</button>' : ''}
+          </div>
+        \`;
+      }
+
       // Render KPI Metrics
       function updateStats() {
-        statMatched.textContent = db.matches.length;
-        statTop.textContent = db.matches.filter(m => m.matchScore >= 8.5).length;
-        statCrawled.textContent = db.crawledJds.length;
-        statVetoed.textContent = db.rejections.length;
-        statReports.textContent = (db.reports || []).length;
+        const matches = db.matches || [];
+        const rejections = db.rejections || [];
+        const reports = db.reports || [];
+        const crawled = db.crawledJds || [];
+        const topCount = matches.filter(m => m.matchScore >= 8.5).length;
+        const avg = matches.length
+          ? (matches.reduce((acc, m) => acc + (Number(m.matchScore) || 0), 0) / matches.length).toFixed(1)
+          : '—';
+
+        statMatched.textContent = matches.length;
+        statTop.textContent = topCount;
+        statAvg.textContent = avg;
+        statCrawled.textContent = crawled.length;
+        statVetoed.textContent = rejections.length;
+        statReports.textContent = reports.length;
         statSpan.textContent = (db.stats && db.stats.historySpan) || '—';
         if (db.updatedAt) datePill.textContent = 'Updated: ' + db.updatedAt;
 
-        badgeMatched.textContent = db.matches.length;
-        badgeCrawled.textContent = db.crawledJds.length;
-        badgeHistory.textContent = (db.reports || []).length;
-        badgeAudit.textContent = db.rejections.length;
-        auditCountBadge.textContent = db.rejections.length + ' JDs vetoed';
+        // Top-conviction share ring
+        const share = matches.length ? Math.round((topCount / matches.length) * 100) : 0;
+        statShare.textContent = share + '%';
+        const ringLen = 2 * Math.PI * 52;
+        ringVal.setAttribute('stroke-dasharray', ringLen.toFixed(1));
+        ringVal.setAttribute('stroke-dashoffset', (ringLen * (1 - share / 100)).toFixed(1));
+
+        badgeMatched.textContent = matches.length;
+        badgeCrawled.textContent = crawled.length;
+        badgeHistory.textContent = reports.length;
+        badgeAudit.textContent = rejections.length;
+        auditCountBadge.textContent = rejections.length + ' JDs vetoed';
+
+        renderSpotlight(matches);
+        renderActivity(reports);
+      }
+
+      // Ink spotlight card: highest-scoring approved match
+      function renderSpotlight(matches) {
+        const top = (matches || []).slice().sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))[0];
+
+        if (!top) {
+          spotlightCard.innerHTML = \`
+            <div class="spotlight-head">
+              <span class="bento-label">Top pick</span>
+            </div>
+            <div class="spotlight-empty">No approved match yet — run an evaluation to populate the spotlight.</div>
+            <div class="bento-deco" aria-hidden="true"></div>
+          \`;
+          return;
+        }
+
+        const salary = top.salary && top.salary !== 'Not specified' ? top.salary : '';
+        const loc = (top.locations || [])[0] || 'Remote';
+        const meta = salary || loc;
+        const arrowIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>';
+
+        spotlightCard.innerHTML = \`
+          <div class="spotlight-head">
+            <span class="bento-label">Top pick</span>
+            <a class="circle-btn" href="\${escapeHtml(top.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open posting">\${arrowIcon}</a>
+          </div>
+          <div class="spotlight-body">
+            <div class="spotlight-score">\${Number(top.matchScore).toFixed(1)}<span>/ 10</span></div>
+            <div class="spotlight-meta">
+              <div class="spotlight-company">\${escapeHtml(top.company)}</div>
+              <a class="spotlight-title" href="\${escapeHtml(top.url)}" target="_blank" rel="noopener noreferrer">\${escapeHtml(top.title)}</a>
+            </div>
+          </div>
+          <div class="bento-deco" aria-hidden="true"></div>
+          <div class="spotlight-foot">
+            <span class="spotlight-loc" title="\${escapeHtml(meta)}">\${escapeHtml(meta)}</span>
+            <a class="square-cta" href="\${escapeHtml(top.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open \${escapeHtml(top.title)}">\${arrowIcon}</a>
+          </div>
+        \`;
+      }
+
+      // Per-run activity bars: matched (lime) vs vetoed (apricot)
+      function renderActivity(reports) {
+        const runs = (reports || []).slice().sort((a, b) =>
+          (a.date + a.file) < (b.date + b.file) ? -1 : 1
+        );
+        chartMatched.textContent = runs.reduce((acc, r) => acc + (r.matched || 0), 0);
+        chartVetoed.textContent = runs.reduce((acc, r) => acc + (r.rejected || 0), 0);
+
+        if (!runs.length) {
+          activityChart.innerHTML = '<span style="font-size:12px;color:var(--text-3);letter-spacing:0">No evaluation runs yet.</span>';
+          return;
+        }
+
+        const max = Math.max(...runs.map(r => (r.matched || 0) + (r.rejected || 0)), 1);
+        activityChart.innerHTML = runs.map(r => {
+          const matched = r.matched || 0;
+          const vetoed = r.rejected || 0;
+          const vetoPct = (vetoed / max) * 100;
+          const matchPct = matched ? Math.max((matched / max) * 100, 3.2) : 0;
+          return \`<div class="bar-col" title="\${escapeHtml(r.date)} · \${matched} matched / \${vetoed} vetoed">
+            <div class="bar-stack">
+              <i class="bar-veto" style="height:\${vetoPct.toFixed(1)}%"></i>
+              <i class="bar-match" style="height:\${matchPct.toFixed(1)}%"></i>
+            </div>
+            <span class="bar-x">\${escapeHtml((r.date || '').slice(5))}</span>
+          </div>\`;
+        }).join('');
       }
 
       // Build a single matched-job card
       function renderMatchCard(job) {
-        let scoreBadgeStyle = "background: #e8e6dc; color: #3d3d3a; border: 1px solid #d8d5c8;";
-        if (job.matchScore >= 9.0) {
-          scoreBadgeStyle = "background: #1B365D; color: #faf9f5; border: 1px solid #1B365D;";
-        } else if (job.matchScore >= 8.0) {
-          scoreBadgeStyle = "background: #E4ECF5; color: #1B365D; border: 1px solid #c7d8eb;";
-        }
+        const score = Number(job.matchScore) || 0;
+        const tier = score >= 9 ? 'score-high' : score >= 8 ? 'score-good' : 'score-mid';
+        const tierLabel = score >= 9 ? 'TOP' : score >= 8 ? 'STRONG' : 'FIT';
 
         const locTags = (job.locations || []).slice(0, 3).map(l =>
           \`<span class="kami-tag" onclick="window.filterByKeyword('\${escapeHtml(l)}')">\${escapeHtml(l)}</span>\`
@@ -1563,7 +2687,8 @@ ${initialBundleJson}
           : '';
 
         return \`
-            <div class="kami-card">
+            <article class="kami-card">
+              <span class="score-watermark" aria-hidden="true">\${score.toFixed(1)}</span>
               <div class="card-body">
                 <div class="card-header-row">
                   <div>
@@ -1573,7 +2698,7 @@ ${initialBundleJson}
                     </h3>
                   </div>
                   <div class="score-container">
-                    <span class="score-badge" style="\${scoreBadgeStyle}">\${Number(job.matchScore).toFixed(1)} / 10</span>
+                    <span class="score-badge \${tier}">\${score.toFixed(1)} · \${tierLabel}</span>
                     <span class="date-label">\${escapeHtml(job.postedAt)}</span>
                     \${repeatBadge}
                   </div>
@@ -1585,15 +2710,8 @@ ${initialBundleJson}
                   <span class="kami-tag source-tag">\${escapeHtml(job.source)}</span>
                 </div>
 
-                <div class="callout-box why-box">
-                  <div class="callout-title"><span class="callout-bullet">✦</span> Why It Matches</div>
-                  <p class="callout-text">\${escapeHtml(job.whyMatch)}</p>
-                </div>
-
-                <div class="callout-box tips-box">
-                  <div class="callout-title tips-title"><span class="callout-bullet">↳</span> Application & Interview Tips</div>
-                  <p class="callout-text">\${escapeHtml(job.tips)}</p>
-                </div>
+                \${callout('why-box', 'Why it matches', '✦', job.whyMatch)}
+                \${callout('tips-box', 'Application & interview tips', '↳', job.tips)}
               </div>
 
               <div class="card-footer">
@@ -1602,11 +2720,11 @@ ${initialBundleJson}
                   <div class="eval-chip">Evaluated \${escapeHtml(job.evaluatedAt || '')}\${job.reportFile ? ' · ' + escapeHtml(job.reportFile) : ''}</div>
                 </div>
                 <a href="\${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer" class="btn-primary">
-                  <span>Apply Now</span>
+                  <span>Apply now</span>
                   <span class="arrow">↗</span>
                 </a>
               </div>
-            </div>
+            </article>
           \`;
       }
 
@@ -1685,16 +2803,28 @@ ${initialBundleJson}
           return;
         }
 
-        historyList.innerHTML = reports.map(r => \`
+        const maxTotal = Math.max(...reports.map(r => (r.matched || 0) + (r.rejected || 0)), 1);
+
+        historyList.innerHTML = reports.map(r => {
+          const matched = r.matched || 0;
+          const vetoed = r.rejected || 0;
+          const matchPct = (matched / maxTotal) * 100;
+          const vetoPct = (vetoed / maxTotal) * 100;
+          return \`
           <div class="history-row">
             <span class="history-date">\${escapeHtml(r.date)}</span>
             <span class="history-file" title="\${escapeHtml(r.file)}">\${escapeHtml(r.file)}</span>
+            <span class="history-bar" title="\${matched} matched / \${vetoed} vetoed">
+              <i class="hb-match" style="width:\${matchPct.toFixed(1)}%"></i>
+              <i class="hb-veto" style="width:\${vetoPct.toFixed(1)}%"></i>
+            </span>
             <span class="history-counts">
-              <span class="breaking-badge" style="background: var(--tag-bg); color: var(--brand);">\${r.matched} matched</span>
-              <span class="breaking-badge">\${r.rejected} vetoed</span>
+              <span class="breaking-badge ok">\${matched} matched</span>
+              <span class="breaking-badge">\${vetoed} vetoed</span>
             </span>
           </div>
-        \`).join('');
+        \`;
+        }).join('');
       }
 
       // Render All Crawled Knowledge Base View
@@ -1717,7 +2847,7 @@ ${initialBundleJson}
 
         if (filtered.length === 0) {
           crawledGrid.innerHTML = \`
-            <div class="empty-state" style="grid-column: 1 / -1;">
+            <div class="empty-state" style="border: 0; background: transparent;">
               <div class="empty-icon">📂</div>
               <p>No jobs found in knowledge base matching current search.</p>
             </div>
@@ -1725,49 +2855,34 @@ ${initialBundleJson}
           return;
         }
 
-        crawledGrid.innerHTML = filtered.map(job => {
-          const tagPills = (job.tags || []).slice(0, 5).map(t =>
-            \`<span class="kami-tag" onclick="window.filterByKeyword('\${escapeHtml(t)}')">\${escapeHtml(t)}</span>\`
-          ).join(' ');
+        const tableHead = \`
+          <div class="table-row head" aria-hidden="true">
+            <span></span><span>Role</span><span>Company</span><span>Source</span><span>Posted</span><span>Tags</span><span></span>
+          </div>
+        \`;
 
-          const locPills = (job.locations || []).slice(0, 2).map(l =>
-            \`<span class="kami-tag" style="background: var(--warm-sand); color: var(--stone);">\${escapeHtml(l)}</span>\`
-          ).join(' ');
+        crawledGrid.innerHTML = tableHead + filtered.map(job => {
+          const source = String(job.source || 'unknown').split('(')[0].trim();
+          const initial = (job.company || '?').trim().charAt(0).toUpperCase();
+          const chips = (job.tags && job.tags.length) ? job.tags.slice(0, 2) : (job.locations || []).slice(0, 1);
+          const tagPills = chips.map(t =>
+            \`<span class="kami-tag" onclick="window.filterByKeyword('\${escapeHtml(t)}')" title="\${escapeHtml(t)}">\${escapeHtml(t)}</span>\`
+          ).join('');
 
           return \`
-            <div class="kami-card">
-              <div class="card-body">
-                <div class="card-header-row">
-                  <div>
-                    <div class="company-label">\${escapeHtml(job.company)}</div>
-                    <h3 class="job-title">
-                      <a href="\${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer">\${escapeHtml(job.title)}</a>
-                    </h3>
-                  </div>
-                  <div class="score-container">
-                    <span class="date-label" style="font-weight: 500;">\${escapeHtml(job.postedAt)}</span>
-                    <span class="kami-tag source-tag" style="margin-top: 4px;">\${escapeHtml(job.source)}</span>
-                  </div>
-                </div>
-
-                <div class="tags-row">
-                  \${locPills}
-                  \${job.salary && job.salary !== 'Not specified' ? \`<span class="kami-tag salary-tag">\${escapeHtml(job.salary)}</span>\` : ''}
-                </div>
-
-                <div style="margin-bottom: 14px;">
-                  <div style="font-family: var(--sans); font-size: 11px; text-transform: uppercase; color: var(--stone); margin-bottom: 6px; letter-spacing: 0.5px;">Skill Tags</div>
-                  <div class="tags-row">\${tagPills || '<span style="font-size: 11px; color: var(--stone);">No tags listed</span>'}</div>
-                </div>
+            <div class="table-row">
+              <div class="thumb" aria-hidden="true">\${escapeHtml(initial)}</div>
+              <div style="min-width: 0;">
+                <a class="cell-title" href="\${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer" title="\${escapeHtml(job.title)}">\${escapeHtml(job.title)}</a>
+                <div class="cell-sub">\${escapeHtml(job.relPath || job.id || '')}</div>
               </div>
-
-              <div class="card-footer">
-                <div class="path-label">\${escapeHtml(job.relPath || '')}</div>
-                <a href="\${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer" class="btn-primary">
-                  <span>View Posting</span>
-                  <span class="arrow">↗</span>
-                </a>
-              </div>
+              <div class="cell-muted cell-hide">\${escapeHtml(job.company)}</div>
+              <div class="cell-muted cell-hide"><span class="kami-tag source-tag">\${escapeHtml(source)}</span></div>
+              <div class="cell-muted cell-hide">\${escapeHtml(job.postedAt)}</div>
+              <div class="cell-tags cell-hide">\${tagPills || '<span class="cell-muted">—</span>'}</div>
+              <a class="row-btn" href="\${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open posting">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+              </a>
             </div>
           \`;
         }).join('');
@@ -1797,7 +2912,7 @@ ${initialBundleJson}
             <td class="audit-td" style="font-weight: 500;">\${escapeHtml(r.title)}</td>
             <td class="audit-td" style="color: var(--olive);">\${escapeHtml(r.company)}</td>
             <td class="audit-td">
-              <span class="breaking-badge">\${escapeHtml(r.reason)}</span>
+              <span class="audit-reason">\${escapeHtml(r.reason)}</span>
             </td>
           </tr>
         \`).join('');
@@ -1851,18 +2966,49 @@ ${initialBundleJson}
       scoreFilter.addEventListener('change', updateActiveView);
       sourceFilter.addEventListener('change', updateActiveView);
 
-      // Theme toggle
+      // Expand / collapse long analysis blocks
+      document.addEventListener('click', (event) => {
+        const btn = event.target.closest('.more-btn');
+        if (!btn) return;
+        const box = btn.closest('.callout-box');
+        if (!box) return;
+        const open = box.classList.toggle('expanded');
+        btn.textContent = open ? 'Show less' : 'Read more';
+      });
+
+      // Reset filters
+      const resetBtn = document.getElementById('resetFilters');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+          searchInput.value = '';
+          scoreFilter.value = '0';
+          sourceFilter.value = 'all';
+          updateActiveView();
+          searchInput.focus();
+        });
+      }
+
+      // Theme toggle (persisted per browser)
       const themeBtn = document.getElementById('themeToggle');
-      let isDark = false;
-      themeBtn.addEventListener('click', () => {
-        isDark = !isDark;
-        if (isDark) {
+      const themeLabel = document.getElementById('themeLabel');
+      const THEME_KEY = 'jd-matcher-theme';
+      const applyTheme = (dark) => {
+        if (dark) {
           document.documentElement.setAttribute('data-theme', 'dark');
-          themeBtn.textContent = 'Theme: Deep Dark';
+          if (themeLabel) themeLabel.textContent = 'Ink';
         } else {
           document.documentElement.removeAttribute('data-theme');
-          themeBtn.textContent = 'Theme: Parchment';
+          if (themeLabel) themeLabel.textContent = 'Frost';
         }
+      };
+      let savedTheme = null;
+      try { savedTheme = localStorage.getItem(THEME_KEY); } catch (e) { /* file:// may block storage */ }
+      if (savedTheme) applyTheme(savedTheme === 'dark');
+      let isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      themeBtn.addEventListener('click', () => {
+        isDark = !isDark;
+        applyTheme(isDark);
+        try { localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light'); } catch (e) { /* ignore */ }
       });
 
       // Initial mount

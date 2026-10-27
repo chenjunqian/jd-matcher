@@ -8,7 +8,7 @@
 **JD Matcher** is an intelligent remote job discovery and evaluation engine that pairs candidate backgrounds with live job postings using Large Language Models (LLMs).
 
 It offers two distinct operation modes:
-1. 🌟 **AI Agent Skill (Recommended)**: A local-first, database-free, privacy-preserving workflow for your AI Agent (Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor). Crawls jobs into a structured Markdown knowledge base, filters opportunities via filesystem search, applies strict veto gates, and delivers match recommendations in an elegant, interactive **Kami (`紙`)** visual dashboard.
+1. 🌟 **AI Agent Skill (Recommended)**: A local-first, database-free, privacy-preserving workflow for your AI Agent (Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor). Crawls jobs into a structured Markdown knowledge base, filters opportunities via filesystem search, applies strict veto gates, and delivers match recommendations in an interactive **frosted-glass** visual dashboard.
 2. ☁️ **Cloudflare Serverless Daemon**: An automated 24/7 background cloud stack (Cloudflare Workers, D1 SQLite, Vectorize, Cloudflare Containers, and Queues) with proactive Telegram bot alerts and email notifications.
 
 ---
@@ -20,7 +20,7 @@ It offers two distinct operation modes:
 | **Best For** | **Daily interactive job search & deep evaluations** | **24/7 automated continuous background monitoring** |
 | **Setup Cost** | **Zero cloud setup** (Node.js >= 22 or Bun) | Requires Cloudflare D1, KV, Vectorize, Queues, Telegram token |
 | **Data Privacy** | **100% Local & Private** (PII strictly git-ignored) | Resume & data stored in Cloudflare D1 & Vectorize |
-| **User Interface** | **Kami (`紙`) Interactive HTML Dashboard** (auto-opens in browser) | Telegram Bot (`@your_bot`) + Email notifications |
+| **User Interface** | **Frosted-Glass Interactive HTML Dashboard** (auto-opens in browser) | Telegram Bot (`@your_bot`) + Email notifications |
 | **Supported AI Agents** | Google Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor | Standalone cloud service (Vercel AI SDK inside Container) |
 | **Database Required** | **None** (Markdown Knowledge Base + `find`/`grep`) | Cloudflare D1 + Vectorize |
 
@@ -35,7 +35,7 @@ The primary way to use JD Matcher is through its built-in **Agent Skill**. You d
 - **Glean-Inspired Knowledge Base**: Job postings from RemoteOK and WeWorkRemotely are stored as structured, date-partitioned Markdown files (`data/jds/<YYYY>/<MM>/`).
 - **Two-Stage Fast Retrieval**: Native filesystem search inspects the last 2 months of postings in milliseconds without vector databases.
 - **Hard Constraints Gate**: Strict single-veto enforcement (e.g. immediately rejects US-only jobs for worldwide candidates, rejects below-floor salaries, etc.).
-- **Kami (`紙`) Visual Dashboard**: Visualizes your top matches, vetoed listings, and full crawled inventory in a paper-aesthetic dashboard inspired by [Kami (`紙`)](skills/kami/SKILL.md).
+- **Frosted-Glass Visual Dashboard**: Visualizes your top matches, vetoed listings, and full crawled inventory in a glassmorphism workbench (icon rail, lime/apricot/ink bento cards, activity chart, signal ring) with a light `Frost` and dark `Ink` theme.
 
 ---
 
@@ -157,20 +157,21 @@ node skills/jd-matcher-skill/scripts/crawl.ts --limit 30
 node skills/jd-matcher-skill/scripts/search.ts --months 2 --tags typescript,react,fullstack
 node skills/jd-matcher-skill/scripts/search.ts --months 2 --keywords backend,golang,api
 
-# 3. Generate the Kami-styled HTML dashboard and open in browser
+# 3. Generate the frosted-glass HTML dashboard and open in browser
 node skills/jd-matcher-skill/scripts/dashboard.ts --open
 ```
 
 ---
 
-## 🎨 Visual Dashboard & Kami (`紙`) Design System
+## 🎨 Visual Dashboard & Frosted Workbench Design System
 
 Matches and crawled inventory are rendered into [`data/matches/dashboard.html`](data/matches/dashboard.html). By default, the dashboard adheres to the **Kami (`紙`)** editorial design system:
 
-- **Warm Paper Aesthetics**: Soft background tones (`#FAF8F5`, `#F7F5F0`), evoking artisanal paper documents.
-- **Editorial Typography**: Elegant serif headings (`Noto Serif`, `Source Han Serif`, `Georgia`) paired with crisp, high-contrast sans-serif body text.
-- **Ink-Blue Accents**: Deep ink-blue branding (`#1E3A8A`, `#1B365D`) balanced with warm charcoal slate text.
-- **Interactive Features**: Dynamic client-side search, multi-facet filtering (source, match score tiers), slide-out drawer for full JD inspection, and KPI scorecards.
+- **Frosted Glass Surfaces**: Warm neutral canvas (`#EFEDE9`) with soft lime/apricot gradient blooms, translucent blur panels and hairline borders.
+- **Neo-Grotesque Typography**: A single sans stack with tight-tracked display headings, tabular numerals, and tiny uppercase labels.
+- **Signal Colors**: Chartreuse lime (`#F2EA2E`), apricot (`#FE9251`) and ink black (`#0D0D0D`) accent cards, plus an electric blue for secondary tiers.
+- **Icon Rail + Bento**: Sticky frosted icon rail for the four sections, a 12-column bento of KPI/spotlight cards, per-run activity chart and conviction ring.
+- **Interactive Features**: Client-side search, score/source filters and reset, expandable long-form analysis, per-run history bars, and light/dark (`Frost`/`Ink`) themes persisted in `localStorage`.
 
 ---
 

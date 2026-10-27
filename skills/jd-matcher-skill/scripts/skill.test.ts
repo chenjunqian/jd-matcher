@@ -240,12 +240,16 @@ describe("Dashboard Generation", () => {
     expect(html).toContain("JD Matcher");
     expect(html).toContain("Senior Full Stack");
     expect(html).toContain("9.2");
-    expect(html).toContain("Hard Constraint Exclusions");
+    expect(html).toContain("Hard constraint exclusions");
     expect(html).toContain("US Only");
     // Cumulative history UI
     expect(html).toContain("date-section");
-    expect(html).toContain("Evaluation History");
+    expect(html).toContain("Match report timeline");
     expect(html).toContain("2026-10-10");
+    // Frosted workbench shell
+    expect(html).toContain('id="spotlightCard"');
+    expect(html).toContain('id="activityChart"');
+    expect(html).toContain('class="rail"');
   });
 });
 

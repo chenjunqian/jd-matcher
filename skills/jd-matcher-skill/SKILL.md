@@ -5,8 +5,8 @@ description: >-
   filter recent 2-month opportunities via file system search (find/grep),
   prioritize fresh un-evaluated jobs while excluding already matched/rejected opportunities,
   and evaluate candidate resume and expectations to provide tailored job recommendations.
-  Presents matched results in an interactive Kami-styled HTML dashboard that accumulates
-  the full evaluation history across every dated report (incl. `archive/`).
+  Presents matched results in an interactive frosted-glass (glassmorphism) HTML dashboard that
+  accumulates the full evaluation history across every dated report (incl. `archive/`).
   Use when the user wants to fetch latest remote jobs, match remote jobs with their resume,
   or search and recommend job openings locally.
 ---
@@ -16,7 +16,7 @@ description: >-
 This skill provides a local-first, database-free, and serverless-free workflow for discovering and matching remote jobs.
 Job postings are archived as structured Markdown knowledge base files in the local filesystem, enabling rapid two-stage retrieval via native date-partitioned directories, `find`, and `grep`, with automatic detection and exclusion of already-evaluated jobs, followed by deep AI semantic evaluation against candidate profile constraints.
 
-Results are presented in an elegant, interactive HTML visual dashboard styled according to the **Kami (`紙`)** design system.
+Results are presented in an interactive visual dashboard styled as the **Frosted Workbench** — a glassmorphism system with an icon rail, lime/apricot/ink accent cards and frosted glass surfaces.
 
 ---
 
@@ -65,7 +65,7 @@ data/
     ├── sample-report.example.md      # Tracked reference sample report
     ├── archive/                      # Older dated reports (still aggregated by the dashboard)
     │   └── YYYY-MM-DD-report.md
-    ├── dashboard.html                # Kami-styled interactive visual dashboard (git-ignored)
+    ├── dashboard.html                # Frosted-glass interactive dashboard (git-ignored)
     ├── data.json / data.js           # Dynamic data bundle for dashboard (git-ignored)
     └── YYYY-MM-DD-report.md          # AI-generated recommendation report (git-ignored)
                                       # same-day reruns add a suffix: YYYY-MM-DD-report-HHMM.md
@@ -168,12 +168,12 @@ Follow the evaluation rubric: [evaluation-rubric.md](./references/evaluation-rub
    - **Never overwrite or delete an existing report.** If a report for today already exists, write the new one with an `-HHMM` suffix instead: `data/matches/YYYY-MM-DD-report-1615.md`.
    - **Never move/rename reports out of the aggregation path** unless you place them under `data/matches/archive/` — the dashboard reads that folder too.
    - Every report is cumulative history: prior recommendations are never rewritten, only appended to with a new dated file.
-2. **Generate Kami-Styled Visual Dashboard**:
+2. **Generate Frosted-Glass Visual Dashboard**:
    Run the dashboard builder script:
    ```bash
    node skills/jd-matcher-skill/scripts/dashboard.ts --open
    ```
-   This regenerates `data/matches/dashboard.html` (along with `data.json` and `data.js`) adhering to the **Kami (`紙`)** design system and opens it in the user's default browser (`xdg-open` on Linux, `open` on macOS). The bundle aggregates **all** reports recursively (top-level + `archive/`), deduplicates jobs across runs (newest evaluation wins) and keeps the per-report evaluation history.
+   This regenerates `data/matches/dashboard.html` (along with `data.json` and `data.js`) adhering to the **Frosted Workbench** design system and opens it in the user's default browser (`xdg-open` on Linux, `open` on macOS). The bundle aggregates **all** reports recursively (top-level + `archive/`), deduplicates jobs across runs (newest evaluation wins) and keeps the per-report evaluation history.
 3. **Present Chat Summary**:
    Provide a concise executive summary in the active chat session:
    - **Role Title & Company**
@@ -235,15 +235,16 @@ node skills/jd-matcher-skill/scripts/search.ts --months 2 --no-agency-content-sc
 
 ---
 
-## Visual Dashboard & Kami (`紙`) Design System
+## Visual Dashboard & Frosted Workbench Design System
 
-Unless the user explicitly specifies another design framework or style, **all generated visual dashboard pages MUST default to the Kami (`紙`) aesthetic**:
+Unless the user explicitly specifies another design framework or style, **all generated visual dashboard pages MUST default to the Frosted Workbench aesthetic** (dark mode included):
 
-- **Paper Aesthetic**: Warm off-white background tones (`#FAF8F5`, `#F7F5F0`, `#EFECE6`), evoking traditional premium paper.
-- **Editorial Typography**: Elegant serif headings (`Noto Serif`, `Source Han Serif`, `Georgia`) combined with crisp system sans body text (`Inter`, system UI) and monospace font for technical tags.
-- **Ink-Blue & Deep Slate Accents**: Ink-blue accents (`#1E3A8A`, `#1B365D`) for primary elements and brand accents, balanced with charcoal slate text (`#1C1917`, `#44403C`).
-- **Craft Layout**: Generous whitespace, subtle borders (`#E2DFD7`), soft card elevations, and elegant metric pill tags.
-- **Interactive Capabilities**: Dynamic client-side search, multi-facet filtering (source, tags, match tiers), detail expansion drawer, and active tab switching between Matched Jobs, Hard Gate Rejections, and Crawled Knowledge Base.
+- **Frosted Glass Surfaces**: Warm neutral canvas (`#EFEDE9`) washed with large lime/apricot/indigo gradient blobs, plus translucent panels (`rgba(255,255,255,0.58)`, `backdrop-filter: blur(20px)`) with 1px white hairlines and very soft, wide shadows.
+- **Neo-Grotesque Typography**: A single sans stack (`Inter` → Helvetica → system UI) with tight tracking on the display title, tabular numerals for all metrics, and 10–11px uppercase tracked labels. No serif.
+- **Signal Colors**: Chartreuse lime (`#F2EA2E`), apricot (`#FE9251`) and ink black (`#0D0D0D`) drive one bento accent card each; blue (`#1E82C2`) is reserved for secondary score tiers.
+- **Bento Layout**: 12-column grid — lime stat card, apricot stat card, ink "top pick" spotlight, a wide activity bar chart and a signal ring; generous 22–28px radii and pill (999px) controls.
+- **Icon Rail Navigation**: A sticky frosted rail with 4 icon tabs (Matches / Crawled / History / Vetoed); on ≤1000px it collapses to a horizontal glass bar with labels.
+- **Interactive Capabilities**: Dynamic client-side search, score/source filters, reset pill, expandable long-form analysis (`Read more`), tab switching between Matched Jobs, Crawled Knowledge Base, Evaluation History and the Veto Audit log.
 - **Cumulative History**: The Matched tab groups every recommended job under its **evaluation date section** (newest run first), so all history stays visible; each card shows its evaluation date and source report, and jobs re-evaluated in multiple runs carry a `↻ N× evaluated` badge. A dedicated **Evaluation History** tab lists every aggregated report with its matched/vetoed counts.
 
 ---
