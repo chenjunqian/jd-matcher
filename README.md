@@ -7,6 +7,10 @@
 
 **JD Matcher** is an intelligent remote job discovery and evaluation engine that pairs candidate backgrounds with live job postings using Large Language Models (LLMs).
 
+![JD Matcher dashboard showing matched jobs, evaluation stats and per-job fit analysis](static/dashboard.webp)
+
+<sub>Dashboard preview rendered from a fictional demo profile — no real candidate data.</sub>
+
 ## 🚀 Install in one prompt
 
 No manual clone, no database, no cloud account. Paste this into **Claude Code, Codex, Cursor, Gemini CLI, Pi, OpenCode** or any agent that can browse a repository:
