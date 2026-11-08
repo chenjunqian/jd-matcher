@@ -79,6 +79,11 @@
   .copy-btn.copied { background: #16a34a; }
   .btn-outline { background: #fff; color: #111; border: 1px solid #ddd; }
   .btn-outline:hover { background: #f5f5f5; }
+  .preview {
+    display: block; width: 100%; height: auto; margin-top: 20px;
+    border: 1px solid #e6e6e6; border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .07);
+  }
   .hint { margin-top: 12px; font-size: 12px; color: #888; }
   .hint a, .link-row a { color: #555; text-decoration: none; border-bottom: 1px solid #ddd; }
   .hint a:hover, .link-row a:hover { color: #111; border-color: #111; }
@@ -121,6 +126,8 @@
       <strong>Claude Code, Codex, Cursor, Gemini CLI, pi</strong> and other agents,
       and tells you when it is ready.
     </p>
+    <img class="preview" src="/dashboard.webp" width="1600" height="1277" loading="lazy"
+         alt="JD Matcher dashboard showing matched jobs, evaluation stats and per-job fit analysis">
     <div class="prompt-box">
       <div class="prompt-head">
         <span>Copy into your AI agent</span>
