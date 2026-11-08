@@ -1,8 +1,18 @@
 # JD Matcher — Cloudflare Workers
 
+## Status
+
+- The **local-first AI agent skill** (`skills/jd-matcher-skill`) is the primary, recommended path for new users.
+- The hosted Worker keeps running for **existing** users and is still maintained, but it is no longer the
+  recommended onboarding path. Point new users at the skill, not at the bot.
+- Installation is agent-driven: users paste a prompt pointing at the repository URL and the agent follows
+  `INSTALL.md`. Do not reintroduce a "clone this repo first" step as the primary flow.
+
 ## Rules
 
 - **Git commit/push**: Every git commit and push requires explicit user approval before execution. This applies to every single operation — prior approval for a previous change does not carry over to new changes.
+- **Install prompt stays in sync**: the same two-line prompt appears in `README.md` and `src/landing.html`
+  (and is described in `INSTALL.md`). If you change one, change all three.
 
 ## Tech Stack
 
@@ -23,6 +33,8 @@
 ## Project Structure
 
 ```
+├── INSTALL.md                  # Agent-facing install checklist (URL → clone → install → verify)
+├── README.md                   # User docs; one-prompt install is the primary entry point
 ├── scripts/
 │   └── install-skill.sh       # Install jd-matcher-skill locally or globally for AI agents
 ├── skills/

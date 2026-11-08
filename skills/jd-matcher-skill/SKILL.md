@@ -29,17 +29,22 @@ Results are presented in an interactive visual dashboard styled as the **Frosted
 
 ## Installation
 
-When the user asks to install this skill (project-local or global), run the installer from the repository root:
+The recommended flow is agent-driven: give the agent the repository URL and let it follow
+[`INSTALL.md`](https://github.com/chenjunqian/jd-matcher/blob/main/INSTALL.md). The short
+form, from a stable clone:
 
 ```bash
-bash scripts/install-skill.sh                              # interactive scope prompt
-bash scripts/install-skill.sh --scope global               # all detected AI agents, user-level
-bash scripts/install-skill.sh --scope local                # this repository only
-bash scripts/install-skill.sh --scope global --copy        # copy instead of symlink (Windows / cloud agents)
-bash scripts/install-skill.sh --scope global --uninstall    # remove
+git clone --depth 1 https://github.com/chenjunqian/jd-matcher.git ~/.local/share/jd-matcher
+cd ~/.local/share/jd-matcher
+bash scripts/install-skill.sh --scope global --target all
 ```
 
-Useful flags: `--target <agents,claude,codex,cursor,gemini,antigravity,opencode,pi|all>`, `--with-kami`, `--force`, `--dry-run`, `--list`. Symlinks are the default so `git pull` updates the installed skill everywhere; with `--copy` the installer must be re-run after each pull. The installer refuses to overwrite a skill it did not create unless `--force` is given. See [`README.md`](../../README.md#1-installation) for the full location table.
+Flags: `--scope local` installs into this repository only; `--copy` replaces symlinks
+(Windows / cloud agents / read-only repos); `--uninstall` removes what the script installed;
+`--list` shows every supported location. Symlink installs update on `git pull`; copy installs
+need a re-run. See [`README.md`](https://github.com/chenjunqian/jd-matcher#-install-in-one-prompt)
+for the one-prompt entry point and [`INSTALL.md`](https://github.com/chenjunqian/jd-matcher/blob/main/INSTALL.md)
+for the full agent checklist and troubleshooting.
 
 ---
 

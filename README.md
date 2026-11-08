@@ -7,17 +7,32 @@
 
 **JD Matcher** is an intelligent remote job discovery and evaluation engine that pairs candidate backgrounds with live job postings using Large Language Models (LLMs).
 
-It offers two distinct operation modes:
-1. 🌟 **AI Agent Skill (Recommended)**: A local-first, database-free, privacy-preserving workflow for your AI Agent (Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor). Crawls jobs into a structured Markdown knowledge base, filters opportunities via filesystem search, applies strict veto gates, and delivers match recommendations in an interactive **frosted-glass** visual dashboard.
-2. ☁️ **Cloudflare Serverless Daemon**: An automated 24/7 background cloud stack (Cloudflare Workers, D1 SQLite, Vectorize, Cloudflare Containers, and Queues) with proactive Telegram bot alerts and email notifications.
+## 🚀 Install in one prompt
+
+No manual clone, no database, no cloud account. Paste this into **Claude Code, Codex, Cursor, Gemini CLI, Pi, OpenCode** or any agent that can browse a repository:
+
+```text
+Install the jd-matcher skill for me from https://github.com/chenjunqian/jd-matcher
+Follow the repo's INSTALL.md, then tell me where it was installed and how to start.
+```
+
+The agent clones the repository to a stable location, registers the skill for every supported agent, verifies that it is discoverable, and tells you how to run the first job search. Requirements: Node.js >= 22.6 (or Bun) and `git`. Full agent-facing steps live in [`INSTALL.md`](INSTALL.md).
+
+---
+
+## Two ways to run it
+
+1. 🌟 **AI Agent Skill (recommended, supported)**: A local-first, database-free, privacy-preserving workflow for your AI Agent (Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor). Crawls jobs into a structured Markdown knowledge base, filters opportunities via filesystem search, applies strict veto gates, and delivers match recommendations in an interactive **frosted-glass** visual dashboard.
+2. ☁️ **Hosted Telegram bot (legacy)**: The hosted Cloudflare stack (Workers, D1, Vectorize, Containers, Queues) still runs for existing users, but it is no longer the recommended entry point. New users should start with the skill above.
 
 ---
 
 ## ⚡ Quick Comparison: Which Mode Should You Use?
 
-| Feature | 🌟 AI Agent Skill (`jd-matcher-skill`) | ☁️ Serverless Cloud Worker |
+| Feature | 🌟 AI Agent Skill (`jd-matcher-skill`) | ☁️ Hosted Stack (legacy) |
 |---|---|---|
-| **Best For** | **Daily interactive job search & deep evaluations** | **24/7 automated continuous background monitoring** |
+| **Best For** | **Daily interactive job search & deep evaluations** | Existing bot users; **not recommended for new setups** |
+| **Install** | **One prompt** (see above) | Existing Cloudflare deployment only |
 | **Setup Cost** | **Zero cloud setup** (Node.js >= 22 or Bun) | Requires Cloudflare D1, KV, Vectorize, Queues, Telegram token |
 | **Data Privacy** | **100% Local & Private** (PII strictly git-ignored) | Resume & data stored in Cloudflare D1 & Vectorize |
 | **User Interface** | **Frosted-Glass Interactive HTML Dashboard** (auto-opens in browser) | Telegram Bot (`@your_bot`) + Email notifications |
@@ -43,17 +58,28 @@ The primary way to use JD Matcher is through its built-in **Agent Skill**. You d
 
 #### 1. Installation
 
-Two ways to install — ask your AI Agent, or run the installer yourself. Both support **this project only** and **global (all projects, all agents)** scope. No extra dependencies are required.
+Three ways to install, from least to most manual. All of them end with the skill registered in the agent's global skill directory; no extra dependencies are required.
 
-**Option A — Let your AI Agent install it** (works in Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor):
+**Option A — Paste one prompt (recommended, no manual clone)** — works in Antigravity, Claude Code, OpenCode, Codex, Pi, Cursor and any agent that can browse a repository:
 
-```markdown
-"Install the jd-matcher skill for me — use the project or global scope that fits, register it for all my AI agents, and verify it is discoverable."
+```text
+Install the jd-matcher skill for me from https://github.com/chenjunqian/jd-matcher
+Follow the repo's INSTALL.md, then tell me where it was installed and how to start.
 ```
 
-The agent finds `scripts/install-skill.sh`, picks the right scope, runs it, and confirms the skill shows up in `/skill:` discovery.
+The agent reads [`INSTALL.md`](INSTALL.md), clones the repository to a stable location (`~/.local/share/jd-matcher` on Linux/macOS), runs `scripts/install-skill.sh --scope global --target all`, verifies that `SKILL.md` is readable from at least one agent directory, and reports the result. It never needs `sudo` and never modifies your existing data.
 
-**Option B — Run the installer yourself**
+**Option B — Run the installer yourself from a clone**
+
+```bash
+git clone --depth 1 https://github.com/chenjunqian/jd-matcher.git ~/.local/share/jd-matcher
+cd ~/.local/share/jd-matcher
+bash scripts/install-skill.sh --scope global --target all
+```
+
+Use a stable path, not `/tmp`: the default symlink install points the agents at this checkout, so a scratch directory leaves broken links. The installer warns when it detects a temporary checkout.
+
+**Option C — Manual CLI flags**
 
 ```bash
 # Interactive: choose this project / global / both, then confirm
@@ -175,9 +201,11 @@ Matches and crawled inventory are rendered into [`data/matches/dashboard.html`](
 
 ---
 
-## ☁️ Cloudflare Serverless Deployment (Telegram Bot Mode)
+## ☁️ Hosted Telegram Bot (Cloudflare)
 
-If you need a 24/7 background cloud daemon that runs scheduled hourly crons, vectorizes job descriptions with Cloudflare Vectorize, and sends real-time Telegram and email notifications, you can deploy the Cloudflare Workers stack.
+> **Status:** the hosted bot is still online for existing users. It is **not** the recommended entry point for new users — install the [skill above](#-install-in-one-prompt) instead. This section documents the existing deployment and is kept for maintenance.
+
+The hosted stack runs scheduled hourly crons, vectorizes job descriptions with Cloudflare Vectorize, and sends Telegram and email notifications. If you are extending an existing deployment, the architecture and deploy steps are below.
 
 ### 🏗️ Cloud Architecture
 
