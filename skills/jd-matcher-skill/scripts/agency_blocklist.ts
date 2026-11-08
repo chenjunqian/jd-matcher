@@ -146,6 +146,13 @@ export const AGENCY_PLATFORMS: AgencyPlatform[] = [
     urlSlugs: ["scalable-path", "scalablepath"],
   },
   {
+    key: "silver-dev",
+    name: "Silver.dev",
+    companyNames: ["Silver.dev", "Silver Dev"],
+    hosts: ["silver.dev"],
+    urlSlugs: ["silver-dev"],
+  },
+  {
     key: "deazy",
     name: "Deazy",
     companyNames: ["Deazy"],

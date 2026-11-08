@@ -16,6 +16,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
 
+# Symlinks into a scratch checkout break as soon as the checkout is cleaned up.
+# AI agents often clone into a temporary directory, so detect it and warn later.
+SOURCE_TEMP=0
+for _tmp in /tmp /var/tmp "${TMPDIR:-}"; do
+  [ -n "$_tmp" ] || continue
+  _tmp="${_tmp%/}"
+  [ -n "$_tmp" ] && [ "$_tmp" != "/" ] || continue
+  case "$REPO_ROOT" in "$_tmp"/*) SOURCE_TEMP=1 ;; esac
+done
+
 SCOPE=""
 TARGETS_RAW=""
 SKILLS=("jd-matcher-skill")
@@ -83,6 +93,10 @@ Examples:
   bash scripts/install-skill.sh --scope global --copy --target claude,pi
   bash scripts/install-skill.sh --scope global --dry-run
   bash scripts/install-skill.sh --scope global --uninstall
+
+AI agents:
+  Follow INSTALL.md at the repository root. The short form, from a stable clone, is:
+    bash scripts/install-skill.sh --scope global --target all
 EOF
 }
 
@@ -292,6 +306,8 @@ if [ -z "$SCOPE" ]; then
     esac
   else
     SCOPE="local"
+    warn "no --scope given and no TTY: defaulting to local"
+    warn "pass --scope global to install for every AI agent on this machine"
   fi
 fi
 
@@ -337,6 +353,10 @@ for skill in "${SKILLS[@]}"; do
 done
 
 # ---------------------------------------------------------------- banner
+if [ "$SOURCE_TEMP" = 1 ] && [ "$MODE" != "copy" ] && [ "$UNINSTALL" = 0 ]; then
+  warn "this checkout is under a temporary directory: $REPO_ROOT"
+  warn "symlinks would break when it is cleaned up — clone to a stable path first, or use --copy"
+fi
 if [ "$UNINSTALL" = 1 ]; then
   step "Uninstalling ${SKILLS[*]} (scope: $SCOPE)"
 elif [ "$MODE" = "copy" ]; then
