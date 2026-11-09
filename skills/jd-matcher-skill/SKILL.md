@@ -265,8 +265,8 @@ Unless the user explicitly specifies another design framework or style, **all ge
 
 ### `search.ts`
 - `--months <number>`: Number of recent months to inspect (default: 2).
-- `--tags <tag1,tag2>`: Comma-separated Frontmatter tags to match.
-- `--keywords <k1,k2>`: Comma-separated keywords to search in title and content.
+- `--tags <tag1,tag2>`: Frontmatter tags to match (punctuation-insensitive, so `backend` matches `back-end`). Falls back to the job **title** because most ingested JDs ship with an empty tag list. Post bodies are never matched, so `--tags go` no longer hits "Google"/"goals".
+- `--keywords <k1,k2>`: Keywords matched word-bounded against title, company, tags, locations, and the body. Phrases work (`"site reliability"`) and tolerate separators (`full stack` matches `full-stack`/`fullstack`). Terms of 1–2 characters are matched against title/company/tags/locations only — prose matches for such tokens are noise ("go to market").
 - `--location <text>`: Location substring filter (e.g., `worldwide`).
 - `--limit <number>`: Maximum number of results to return (default: 20).
 - `--exclude-matched` / `--unmatched-only`: Strictly exclude already evaluated jobs (matched or rejected) in past reports.
