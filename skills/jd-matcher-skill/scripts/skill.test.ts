@@ -10,7 +10,13 @@ import {
   saveJobDocument,
   normalizeCompanyKey,
 } from "./utils.ts";
-import { searchJDs, getTargetMonthDirs } from "./search.ts";
+import {
+  searchJDs,
+  getTargetMonthDirs,
+  buildTermPattern,
+  matchesAnyTag,
+  matchesAnyKeyword,
+} from "./search.ts";
 import {
   WWR_RSS_URLS,
   crawlRemotive,
@@ -23,6 +29,14 @@ import { detectAgencyPlatform } from "./agency_blocklist.ts";
 import type { JobMarkdownDocument } from "./types.ts";
 
 const TEST_DIR = path.resolve(process.cwd(), "data/test_jds");
+
+// Fixture dates must stay inside the rolling `--months 2` window, otherwise these
+// tests start failing as soon as the calendar rolls into a new month.
+const NOW_ISO = new Date().toISOString();
+const PREV_MONTH_ISO = (() => {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 15)).toISOString();
+})();
 
 describe("Skill Utils", () => {
   it("slugifies text cleanly", () => {
@@ -141,7 +155,7 @@ describe("Knowledge Base Storage & Search", () => {
         company: "Alpha",
         source: "remoteok",
         url: "https://example.com/1",
-        posted_at: "2026-10-08T00:00:00Z",
+        posted_at: NOW_ISO,
         crawled_at: "2026-10-10T00:00:00Z",
         locations: ["Worldwide"],
         salary: "$100k",
@@ -158,7 +172,7 @@ describe("Knowledge Base Storage & Search", () => {
         company: "Beta",
         source: "weworkremotely",
         url: "https://example.com/2",
-        posted_at: "2026-09-15T00:00:00Z",
+        posted_at: PREV_MONTH_ISO,
         crawled_at: "2026-10-10T00:00:00Z",
         locations: ["Europe Only"],
         salary: "",
@@ -188,6 +202,178 @@ describe("Knowledge Base Storage & Search", () => {
     });
     expect(devopsResults.length).toBe(1);
     expect(devopsResults[0].id).toBe("wwr-2002");
+  });
+});
+
+describe("Tag & Keyword Term Matching", () => {
+  const TERMS_DIR = path.resolve(process.cwd(), "data/test_search_terms");
+
+  const makeDoc = (
+    id: string,
+    title: string,
+    tags: string[],
+    body: string,
+    company = "Acme"
+  ): JobMarkdownDocument => ({
+    metadata: {
+      id,
+      title,
+      company,
+      source: "remoteok",
+      url: `https://example.com/${id}`,
+      posted_at: NOW_ISO,
+      crawled_at: "2026-10-10T00:00:00Z",
+      locations: ["Worldwide"],
+      salary: "",
+      tags,
+      status: "active",
+    },
+    markdownContent: body,
+  });
+
+  beforeEach(() => {
+    if (fs.existsSync(TERMS_DIR)) {
+      fs.rmSync(TERMS_DIR, { recursive: true, force: true });
+    }
+    fs.mkdirSync(TERMS_DIR, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(TERMS_DIR)) {
+      fs.rmSync(TERMS_DIR, { recursive: true, force: true });
+    }
+  });
+
+  it("builds word-bounded patterns that tolerate separators", () => {
+    // "full stack" must also match "full-stack" / "fullstack"
+    expect(new RegExp(buildTermPattern("full stack"), "i").test("Senior Full-Stack Engineer")).toBe(
+      true
+    );
+    expect(new RegExp(buildTermPattern("full stack"), "i").test("fullstack developer")).toBe(true);
+    // "go" must not match inside Google / good / goals
+    expect(new RegExp(buildTermPattern("go"), "i").test("Google Cloud")).toBe(false);
+    expect(new RegExp(buildTermPattern("go"), "i").test("go to market")).toBe(true);
+    // …nor inside a hyphenated compound such as "Go-To-Market"…
+    expect(new RegExp(buildTermPattern("go"), "i").test("VP, Go-To-Market")).toBe(false);
+    // …while a standalone mention still matches.
+    expect(new RegExp(buildTermPattern("go"), "i").test("Senior Go Developer")).toBe(true);
+    expect(new RegExp(buildTermPattern("go"), "i").test("Go/Kubernetes Developer")).toBe(true);
+  });
+
+  it("does not match tags against post body prose", () => {
+    saveJobDocument(
+      makeDoc(
+        "rok-3001",
+        "Marketing Manager",
+        ["marketing"],
+        "We go fast. Our goals are good. Google Cloud and ongoing growth."
+      ),
+      TERMS_DIR
+    );
+
+    // Regression: `--tags go` used to match this posting via "goals"/"Google" in the body.
+    expect(searchJDs({ jdsDir: TERMS_DIR, months: 2, tags: ["go"] }).length).toBe(0);
+
+    // The actual frontmatter tag still matches.
+    const byTag = searchJDs({ jdsDir: TERMS_DIR, months: 2, tags: ["marketing"] });
+    expect(byTag.length).toBe(1);
+    expect(byTag[0].id).toBe("rok-3001");
+  });
+
+  it("matches tags against the title when frontmatter tags are empty", () => {
+    saveJobDocument(
+      makeDoc("rok-3002", "Senior Kubernetes Engineer", [], "Platform team building clusters."),
+      TERMS_DIR
+    );
+
+    // Most ingested JDs ship with `tags: []`, so the title carries the signal.
+    const results = searchJDs({ jdsDir: TERMS_DIR, months: 2, tags: ["kubernetes"] });
+    expect(results.length).toBe(1);
+    expect(results[0].id).toBe("rok-3002");
+  });
+
+  it("normalizes punctuation when comparing frontmatter tags", () => {
+    saveJobDocument(
+      makeDoc("rok-3003", "Software Engineer", ["back-end", "c plus plus"], "Backend services."),
+      TERMS_DIR
+    );
+
+    // "backend" and "back-end" are the same tag.
+    expect(matchesAnyTag(["backend"], ["back-end"], "Software Engineer")).toBe(true);
+    expect(matchesAnyTag(["fullstack"], ["full-stack"], "Engineer")).toBe(true);
+    // Different tags must stay distinct.
+    expect(matchesAnyTag(["react"], ["go"], "Backend Engineer")).toBe(false);
+  });
+
+  it("matches keywords word-bounded and keeps very short terms out of prose", () => {
+    saveJobDocument(
+      makeDoc(
+        "rok-3004",
+        "Support Engineer",
+        [],
+        "Scale with Google Cloud. We maintain and improve systems. Good teamwork."
+      ),
+      TERMS_DIR
+    );
+
+    // "go" is 2 chars: it must not scan prose for "Google"/"Good"…
+    expect(searchJDs({ jdsDir: TERMS_DIR, months: 2, keywords: ["go"] }).length).toBe(0);
+    // …but a 3+ char term still searches the body.
+    expect(searchJDs({ jdsDir: TERMS_DIR, months: 2, keywords: ["google"] }).length).toBe(1);
+    // Word boundaries keep "maintain" from matching "maintains".
+    expect(searchJDs({ jdsDir: TERMS_DIR, months: 2, keywords: ["maintains"] }).length).toBe(0);
+  });
+
+  it("matches multi-word keyword phrases across hyphen and space variants", () => {
+    saveJobDocument(
+      makeDoc("rok-3005", "Site Reliability Engineer", [], "Own uptime and incident response."),
+      TERMS_DIR
+    );
+    saveJobDocument(
+      makeDoc("rok-3006", "Senior Full-Stack Engineer", [], "Build end-to-end features."),
+      TERMS_DIR
+    );
+
+    const phrase = searchJDs({
+      jdsDir: TERMS_DIR,
+      months: 2,
+      keywords: ["site reliability"],
+    });
+    expect(phrase.map((r) => r.id)).toEqual(["rok-3005"]);
+
+    const hyphen = searchJDs({ jdsDir: TERMS_DIR, months: 2, keywords: ["full stack"] });
+    expect(hyphen.map((r) => r.id)).toEqual(["rok-3006"]);
+  });
+
+  it("treats separator-only filter terms as no filter instead of matching everything", () => {
+    const fields = {
+      title: "Backend Engineer",
+      company: "Acme",
+      tags: ["go"],
+      locations: ["Worldwide"],
+      body: "Go and Kubernetes.",
+    };
+    // An empty regex would match every posting; these must be ignored instead.
+    expect(matchesAnyTag(["---"], ["go"], "Backend Engineer")).toBe(true);
+    expect(matchesAnyKeyword(["---"], fields)).toBe(true);
+  });
+
+  it("requires every specified filter group to pass", () => {
+    saveJobDocument(
+      makeDoc("rok-3007", "Go Platform Engineer", ["golang"], "Kubernetes and Airflow at scale."),
+      TERMS_DIR
+    );
+
+    // tags AND keywords both apply (each group is OR-within, AND-across).
+    expect(
+      searchJDs({ jdsDir: TERMS_DIR, months: 2, tags: ["golang"], keywords: ["airflow"] }).length
+    ).toBe(1);
+    expect(
+      searchJDs({ jdsDir: TERMS_DIR, months: 2, tags: ["golang"], keywords: ["salesforce"] }).length
+    ).toBe(0);
+    expect(
+      searchJDs({ jdsDir: TERMS_DIR, months: 2, tags: ["react"], keywords: ["airflow"] }).length
+    ).toBe(0);
   });
 });
 
@@ -492,7 +678,7 @@ describe("Evaluated Job Exclusion & Prioritization", () => {
         company: "Sticker Mule",
         source: "remoteok",
         url: "https://remoteok.com/eval-001",
-        posted_at: "2026-10-10T00:00:00Z",
+        posted_at: NOW_ISO,
         crawled_at: "2026-10-10T00:00:00Z",
         locations: ["Worldwide"],
         salary: "$150k",
@@ -509,7 +695,7 @@ describe("Evaluated Job Exclusion & Prioritization", () => {
         company: "NewStartup",
         source: "remoteok",
         url: "https://remoteok.com/fresh-002",
-        posted_at: "2026-10-09T00:00:00Z",
+        posted_at: NOW_ISO,
         crawled_at: "2026-10-10T00:00:00Z",
         locations: ["Worldwide"],
         salary: "$140k",
@@ -646,7 +832,7 @@ describe("Agency / Freelance-Marketplace Filtering", () => {
         company: "Proxify",
         source: "workingnomads",
         url: "https://www.workingnomads.com/job/go/1925654/",
-        posted_at: "2026-10-08T00:00:00Z",
+        posted_at: NOW_ISO,
         crawled_at: "2026-10-15T00:00:00Z",
         locations: ["Time zone: CET (+/- 3 hours)"],
         salary: "",
@@ -696,7 +882,7 @@ describe("Agency / Freelance-Marketplace Filtering", () => {
         company,
         source: "remoteok",
         url,
-        posted_at: "2026-10-08T00:00:00Z",
+        posted_at: NOW_ISO,
         crawled_at: "2026-10-10T00:00:00Z",
         locations: ["Worldwide"],
         salary: "",
